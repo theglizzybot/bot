@@ -1,0 +1,99 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { discordBot } from "./discord-bot";
+import { insertApplicationSchema, sendMessageSchema } from "@shared/schema";
+import { z } from "zod";
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Bot-Status abrufen
+  app.get("/api/bot/status", async (req, res) => {
+    try {
+      const status = discordBot.getStatus();
+      res.json(status);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Discord-Server und Kanäle abrufen
+  app.get("/api/discord/servers", async (req, res) => {
+    try {
+      if (!discordBot.isReady()) {
+        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+      }
+      const servers = discordBot.getServers();
+      res.json(servers);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Nachricht an Discord-Kanal senden
+  app.post("/api/discord/send-message", async (req, res) => {
+    try {
+      const validated = sendMessageSchema.parse(req.body);
+      
+      if (!discordBot.isReady()) {
+        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+      }
+
+      await discordBot.sendMessage(validated.channelId, validated.content);
+      res.json({ success: true, message: "Nachricht erfolgreich gesendet" });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Ungültige Daten", errors: error.errors });
+      }
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Alle Bewerbungen abrufen
+  app.get("/api/applications", async (req, res) => {
+    try {
+      const applications = await storage.getApplications();
+      res.json(applications);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Neue Bewerbung erstellen (von Discord)
+  app.post("/api/applications", async (req, res) => {
+    try {
+      const validated = insertApplicationSchema.parse(req.body);
+      const application = await storage.createApplication(validated);
+      res.status(201).json(application);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Ungültige Daten", errors: error.errors });
+      }
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Bewerbungsstatus aktualisieren
+  app.patch("/api/applications/:id/status", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!status || typeof status !== 'string') {
+        return res.status(400).json({ message: "Status ist erforderlich" });
+      }
+
+      const application = await storage.updateApplicationStatus(id, status);
+      if (!application) {
+        return res.status(404).json({ message: "Bewerbung nicht gefunden" });
+      }
+
+      res.json(application);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  const httpServer = createServer(app);
+
+  return httpServer;
+}
