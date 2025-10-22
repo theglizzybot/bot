@@ -99,7 +99,10 @@ export default function Servers() {
                 <CardContent>
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="channels" className="border-0">
-                      <AccordionTrigger className="text-sm font-medium hover:no-underline py-2">
+                      <AccordionTrigger 
+                        className="text-sm font-medium hover:no-underline py-2"
+                        data-testid={`accordion-channels-${server.id}`}
+                      >
                         Kanäle anzeigen ({server.channels.length})
                       </AccordionTrigger>
                       <AccordionContent>

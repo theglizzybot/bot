@@ -73,7 +73,7 @@ export default function Applications() {
                 </CardDescription>
               </div>
               <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-                <TabsList>
+                <TabsList data-testid="tabs-list-applications">
                   <TabsTrigger value="Alle" data-testid="tab-alle">
                     Alle
                   </TabsTrigger>
@@ -161,9 +161,9 @@ export default function Applications() {
       </div>
 
       <Dialog open={!!selectedApplication} onOpenChange={() => setSelectedApplication(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-application-details">
           <DialogHeader>
-            <DialogTitle className="text-xl">Bewerbungsdetails</DialogTitle>
+            <DialogTitle className="text-xl" data-testid="title-application-details">Bewerbungsdetails</DialogTitle>
             <DialogDescription>
               Bewerbung von {selectedApplication?.discordName}
             </DialogDescription>
