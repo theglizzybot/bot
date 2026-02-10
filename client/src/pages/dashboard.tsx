@@ -137,13 +137,32 @@ export default function Dashboard() {
                     <p className="text-sm text-muted-foreground">Emergency Hamburg RP Server</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground mb-1">{t('available_commands', 'Verfügbare Befehle')}</p>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      <Badge variant="secondary" className="text-xs">/bewerbung</Badge>
-                      <Badge variant="secondary" className="text-xs">/hilfe</Badge>
-                      <Badge variant="secondary" className="text-xs">/ping</Badge>
-                      <Badge variant="secondary" className="text-xs">/ankündigung</Badge>
-                      <Badge variant="secondary" className="text-xs">/info</Badge>
+                    <p className="text-sm font-medium text-foreground mb-1">{t('available_commands')}</p>
+                    <div className="grid gap-2 mt-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">/ping</Badge>
+                        <span className="text-xs text-muted-foreground">{t('cmd_ping_desc')}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">/hilfe</Badge>
+                        <span className="text-xs text-muted-foreground">{t('cmd_help_desc')}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">/info</Badge>
+                        <span className="text-xs text-muted-foreground">{t('cmd_info_desc')}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">/bewerbung</Badge>
+                        <span className="text-xs text-muted-foreground">{t('cmd_apply_desc')}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">/ankündigung</Badge>
+                        <span className="text-xs text-muted-foreground">{t('cmd_announcement_desc')}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">/startup</Badge>
+                        <span className="text-xs text-muted-foreground">{t('cmd_startup_desc')}</span>
+                      </div>
                     </div>
                   </div>
                   <div>
