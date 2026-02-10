@@ -1,5 +1,17 @@
-import { Client, GatewayIntentBits, ActivityType, PermissionFlagsBits, REST, Routes, ApplicationCommandOptionType, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
-import { storage } from './storage';
+import {
+  Client,
+  GatewayIntentBits,
+  ActivityType,
+  PermissionFlagsBits,
+  REST,
+  Routes,
+  ApplicationCommandOptionType,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ActionRowBuilder,
+} from "discord.js";
+import { storage } from "./storage";
 
 export class DiscordBot {
   private client: Client | null = null;
@@ -9,9 +21,9 @@ export class DiscordBot {
   async initialize() {
     try {
       const token = process.env.DISCORD_BOT_TOKEN;
-      
+
       if (!token) {
-        throw new Error('DISCORD_BOT_TOKEN ist nicht gesetzt');
+        throw new Error("DISCORD_BOT_TOKEN ist nicht gesetzt");
       }
 
       this.client = new Client({
@@ -19,33 +31,42 @@ export class DiscordBot {
           GatewayIntentBits.Guilds,
           GatewayIntentBits.GuildMessages,
           GatewayIntentBits.MessageContent,
-        ]
+        ],
       });
 
       this.startTime = Date.now();
 
-      this.client.once('ready', async () => {
+      this.client.once("ready", async () => {
         console.log(`✅ Discord Bot eingeloggt als ${this.client?.user?.tag}`);
         this.ready = true;
 
-        // Bot-Status setzen
-        this.client?.user?.setPresence({
-          activities: [{
-            name: 'Hamburg Response Network (HRN)',
-            type: ActivityType.Playing,
-          }],
-          status: 'online',
-        });
+        // Aktivitäten wechseln: Alex Gaming® ↔ Grenzen RP (GRP)
+        const activities = [
+          { name: "Minecraft Classic", type: ActivityType.Playing },
+          { name: "Minecraft", type: ActivityType.Playing },
+        ];
+        let current = 0;
+
+        setInterval(() => {
+          if (!this.client?.user) return;
+
+            activities: [activities[current]],
+            status: "online",
+          });
+
+          current = (current + 1) % activities.length;
+          this.client.user.setPresence({
+        }, 10000); // alle 10 Sekunden wechseln
 
         // Slash-Commands registrieren
         await this.registerCommands();
 
-        // Startnachricht senden
-        await this.sendStartupMessage();
+        // Automatische Startnachricht (deaktiviert)
+        // await this.sendStartupMessage();
       });
 
       // Slash-Command Handler
-      this.client.on('interactionCreate', async (interaction) => {
+      this.client.on("interactionCreate", async (interaction) => {
         if (interaction.isChatInputCommand()) {
           await this.handleCommand(interaction);
         } else if (interaction.isModalSubmit()) {
@@ -55,7 +76,7 @@ export class DiscordBot {
 
       await this.client.login(token);
     } catch (error) {
-      console.error('❌ Fehler beim Initialisieren des Discord-Bots:', error);
+      console.error("❌ Fehler beim Initialisieren des Discord-Bots:", error);
       throw error;
     }
   }
@@ -65,280 +86,291 @@ export class DiscordBot {
 
     const token = process.env.DISCORD_BOT_TOKEN;
     if (!token) return;
-    
-    const rest = new REST({ version: '10' }).setToken(token);
+
+    const rest = new REST({ version: "10" }).setToken(token);
 
     const commands = [
       {
-        name: 'ping',
-        description: 'Prüft ob der Bot online ist',
+        name: "ping",
+        description: "Prüft ob der Bot online ist",
       },
       {
-        name: 'hilfe',
-        description: 'Zeigt alle verfügbaren Befehle',
+        name: "hilfe",
+        description: "Zeigt alle verfügbaren Befehle",
       },
       {
-        name: 'info',
-        description: 'Zeigt Bot-Informationen und Portal-Link',
+        name: "info",
+        description: "Zeigt Bot-Informationen und Portal-Link",
       },
       {
-        name: 'bewerbung',
-        description: 'Startet eine Bewerbung für den Server',
+        name: "bewerbung",
+        description: "Startet eine Bewerbung für den Server",
       },
       {
-        name: 'ankündigung',
-        description: 'Sendet eine Ankündigung in den aktuellen Kanal (nur für autorisierte Rollen)',
+        name: "ankündigung",
+        description:
+          "Sendet eine Ankündigung in den aktuellen Kanal (nur für autorisierte Rollen)",
         options: [
           {
-            name: 'nachricht',
+            name: "nachricht",
             type: ApplicationCommandOptionType.String,
-            description: 'Die Nachricht die gesendet werden soll',
+            description: "Die Nachricht die gesendet werden soll",
             required: true,
           },
         ],
       },
+      {
+        name: "startup",
+        description: "Sendet die Startnachricht manuell (nur Admins)",
+      },
     ];
 
     try {
-      await rest.put(
-        Routes.applicationCommands(this.client.application.id),
-        { body: commands }
-      );
-      console.log('✅ Slash-Commands erfolgreich registriert');
+      await rest.put(Routes.applicationCommands(this.client.application.id), {
+        body: commands,
+      });
+      console.log("✅ Slash-Commands erfolgreich registriert");
     } catch (error) {
-      console.error('❌ Fehler beim Registrieren der Commands:', error);
+      console.error("❌ Fehler beim Registrieren der Commands:", error);
     }
   }
 
   private async handleCommand(interaction: any) {
     const { commandName } = interaction;
-
     try {
       switch (commandName) {
-        case 'ping':
+        case "ping":
           await interaction.reply({
-            content: '🏓 Pong! Der Bot ist online und einsatzbereit.',
+            content: "🏓 Pong! Der Bot ist online und einsatzbereit.",
             ephemeral: true,
           });
           break;
 
-        case 'hilfe':
+        case "hilfe":
           const helpEmbed = {
-            color: 0xD32F2F,
-            title: '📋 Emergency Assistant - Befehle',
-            description: 'Hier ist eine Übersicht aller verfügbaren Befehle:',
+            color: 0xd32f2f,
+            title: "/hilfe - Befehle",
+            description: "Hier ist eine Übersicht aller verfügbaren Befehle:",
             fields: [
               {
-                name: '/ping',
-                value: 'Prüft ob der Bot online ist',
+                name: "/ping",
+                value: "Prüft ob der Bot online ist",
                 inline: false,
               },
               {
-                name: '/hilfe',
-                value: 'Zeigt diese Befehlsübersicht',
+                name: "/hilfe",
+                value: "Zeigt diese Befehlsübersicht",
                 inline: false,
               },
               {
-                name: '/info',
-                value: 'Zeigt Bot-Informationen und Portal-Link',
+                name: "/info",
+                value: "Zeigt Bot-Informationen und Portal-Link",
                 inline: false,
               },
               {
-                name: '/bewerbung',
-                value: 'Startet eine Bewerbung für den Server',
+                name: "/bewerbung",
+                value: "Startet eine Bewerbung für den Server",
                 inline: false,
               },
               {
-                name: '/ankündigung <nachricht>',
-                value: 'Sendet eine Ankündigung (nur für autorisierte Rollen)',
+                name: "/ankündigung <nachricht>",
+                value: "Sendet eine Ankündigung (nur für autorisierte Rollen)",
+                inline: false,
+              },
+              {
+                name: "/startup",
+                value: "Sendet die Startnachricht manuell (nur Admins)",
                 inline: false,
               },
             ],
-            footer: {
-              text: 'Emergency Hamburg RP Server',
-            },
+            footer: { text: "GRP" },
             timestamp: new Date().toISOString(),
           };
           await interaction.reply({ embeds: [helpEmbed], ephemeral: true });
           break;
 
-        case 'info':
-          const portalUrl = process.env.REPL_SLUG 
+        case "info":
+          const portalUrl = process.env.REPL_SLUG
             ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-            : 'Portal-URL nicht verfügbar';
-          
+            : "Portal-URL nicht verfügbar";
+
           const infoEmbed = {
-            color: 0x1976D2,
-            title: '🤖 Emergency Assistant',
-            description: 'Bot-Informationen und Details',
+            color: 0x1976d2,
+            title: "GRP",
+            description: "Bot-Informationen und Details",
             fields: [
               {
-                name: '📊 Status',
-                value: 'Online und einsatzbereit',
+                name: "📊 Status",
+                value: "Online und einsatzbereit",
                 inline: true,
               },
+              { name: "⏱️ Laufzeit", value: this.getUptime(), inline: true },
               {
-                name: '⏱️ Laufzeit',
-                value: this.getUptime(),
-                inline: true,
-              },
-              {
-                name: '🌐 Web-Portal',
+                name: "🌐 Web-Portal",
                 value: `[Portal öffnen](${portalUrl})`,
                 inline: false,
               },
+              { name: "📝 Version", value: "23.5.1", inline: true },
               {
-                name: '📝 Version',
-                value: '1.0.0',
-                inline: true,
-              },
-              {
-                name: '🎮 Aktivität',
-                value: 'Spielt Hamburg Response Network (HRN)',
+                name: "🎮 Aktivität",
+                value: "Wechselt automatisch",
                 inline: true,
               },
             ],
-            footer: {
-              text: 'Emergency Hamburg RP Server',
-            },
+            footer: { text: "GRP" },
             timestamp: new Date().toISOString(),
           };
           await interaction.reply({ embeds: [infoEmbed], ephemeral: true });
           break;
 
-        case 'bewerbung':
+        case "bewerbung":
           const modal = new ModalBuilder()
-            .setCustomId('bewerbung-modal')
-            .setTitle('Bewerbung für Emergency Hamburg RP');
+            .setCustomId("bewerbung-modal")
+            .setTitle("Bewerbung für Emergency Hamburg RP");
 
-          const categoryRow = new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-              .setCustomId('category')
-              .setLabel('Bewerbungstyp')
-              .setStyle(TextInputStyle.Short)
-              .setPlaceholder('Admin-Bewerbung oder Member-Bewerbung')
-              .setRequired(true)
-          );
+          const categoryRow =
+            new ActionRowBuilder<TextInputBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId("category")
+                .setLabel("Bewerbungstyp")
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder("Admin-Bewerbung oder Member-Bewerbung")
+                .setRequired(true),
+            );
 
-          const contentRow = new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-              .setCustomId('content')
-              .setLabel('Bewerbungstext')
-              .setStyle(TextInputStyle.Paragraph)
-              .setPlaceholder('Schreiben Sie hier Ihre Bewerbung...')
-              .setRequired(true)
-              .setMinLength(50)
-              .setMaxLength(2000)
-          );
+          const contentRow =
+            new ActionRowBuilder<TextInputBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId("content")
+                .setLabel("Bewerbungstext")
+                .setStyle(TextInputStyle.Paragraph)
+                .setPlaceholder("Schreiben Sie hier Ihre Bewerbung...")
+                .setRequired(true)
+                .setMinLength(50)
+                .setMaxLength(2000),
+            );
 
           modal.addComponents(categoryRow, contentRow);
           await interaction.showModal(modal);
           break;
 
-        case 'ankündigung':
-          // Autorisierte Rollen-IDs
+        case "ankündigung":
           const authorizedRoles = [
-            '1427009009524805683',
-            '1389295000487203006',
-            '1427013248737218600',
-            '1389295000499654717',
+            "1427009009524805683",
+            "1389295000487203006",
+            "1427013248737218600",
+            "1389295000499654717",
           ];
 
           const member = interaction.member;
-          const hasPermission = member.roles.cache.some((role: any) => 
-            authorizedRoles.includes(role.id)
+          const hasPermission = member.roles.cache.some((role: any) =>
+            authorizedRoles.includes(role.id),
           );
 
           if (!hasPermission) {
             await interaction.reply({
-              content: '❌ Du hast keine Berechtigung, diesen Befehl zu verwenden.',
+              content:
+                "❌ Du hast keine Berechtigung, diesen Befehl zu verwenden.",
               ephemeral: true,
             });
             return;
           }
 
-          const message = interaction.options.getString('nachricht');
+          const message = interaction.options.getString("nachricht");
           const announcementEmbed = {
-            color: 0xD32F2F,
-            title: '📢 Ankündigung',
+            color: 0xd32f2f,
+            title: "📢 Ankündigung",
             description: message,
-            footer: {
-              text: `Von ${interaction.user.tag}`,
-            },
+            footer: { text: `Von ${interaction.user.tag}` },
             timestamp: new Date().toISOString(),
           };
 
           await interaction.channel.send({ embeds: [announcementEmbed] });
           await interaction.reply({
-            content: '✅ Ankündigung wurde erfolgreich gesendet.',
+            content: "✅ Ankündigung wurde erfolgreich gesendet.",
+            ephemeral: true,
+          });
+          break;
+
+        case "startup":
+          const isAdmin = interaction.member.roles.cache.some((role: any) =>
+            authorizedRoles.includes(role.id),
+          );
+
+          if (!isAdmin) {
+            await interaction.reply({
+              content:
+                "❌ Du hast keine Berechtigung, diesen Befehl zu verwenden.",
+              ephemeral: true,
+            });
+            return;
+          }
+
+          await this.sendStartupMessage();
+          await interaction.reply({
+            content: "✅ Startnachricht wurde gesendet.",
             ephemeral: true,
           });
           break;
       }
     } catch (error) {
-      console.error('❌ Fehler beim Bearbeiten des Commands:', error);
+      console.error("❌ Fehler beim Bearbeiten des Commands:", error);
       try {
         await interaction.reply({
-          content: '❌ Ein Fehler ist aufgetreten.',
+          content: "❌ Ein Fehler ist aufgetreten.",
           ephemeral: true,
         });
       } catch (e) {
-        console.error('❌ Konnte Fehler nicht senden:', e);
+        console.error("❌ Konnte Fehler nicht senden:", e);
       }
     }
   }
 
   private async handleModalSubmit(interaction: any) {
-    if (interaction.customId === 'bewerbung-modal') {
+    if (interaction.customId === "bewerbung-modal") {
       try {
-        const category = interaction.fields.getTextInputValue('category');
-        const content = interaction.fields.getTextInputValue('content');
+        const category = interaction.fields.getTextInputValue("category");
+        const content = interaction.fields.getTextInputValue("content");
 
-        // Validierung der Kategorie
-        if (category !== 'Admin-Bewerbung' && category !== 'Member-Bewerbung') {
+        if (
+          category !== "Admin-Bewerbung" &&
+          category !== "Content Creator-Bewerbung"
+        ) {
           await interaction.reply({
-            content: '❌ Ungültige Kategorie. Bitte wählen Sie "Admin-Bewerbung" oder "Member-Bewerbung".',
+            content:
+              '❌ Ungültige Kategorie. Bitte wählen Sie "Admin-Bewerbung" oder "Content Creator-Bewerbung".',
             ephemeral: true,
           });
           return;
         }
 
-        // Bewerbung speichern
         const application = await storage.createApplication({
           discordName: interaction.user.tag,
           discordId: interaction.user.id,
           category,
           content,
-          status: 'Neu',
+          status: "Neu",
         });
 
         const confirmEmbed = {
-          color: 0x4CAF50,
-          title: '✅ Bewerbung eingereicht',
-          description: 'Deine Bewerbung wurde erfolgreich eingereicht und wird bald bearbeitet.',
+          color: 0x4caf50,
+          title: "✅ Bewerbung eingereicht",
+          description:
+            "Deine Bewerbung wurde erfolgreich eingereicht und wird bald bearbeitet.",
           fields: [
-            {
-              name: 'Kategorie',
-              value: category,
-              inline: true,
-            },
-            {
-              name: 'Status',
-              value: 'Neu',
-              inline: true,
-            },
+            { name: "Kategorie", value: category, inline: true },
+            { name: "Status", value: "Neu", inline: true },
           ],
-          footer: {
-            text: 'Vielen Dank für dein Interesse!',
-          },
+          footer: { text: "Vielen Dank für deine Bewerbung!" },
           timestamp: new Date().toISOString(),
         };
 
         await interaction.reply({ embeds: [confirmEmbed], ephemeral: true });
       } catch (error) {
-        console.error('❌ Fehler beim Speichern der Bewerbung:', error);
+        console.error("❌ Fehler beim Speichern der Bewerbung:", error);
         await interaction.reply({
-          content: '❌ Fehler beim Speichern der Bewerbung. Bitte versuche es später erneut.',
+          content:
+            "❌ Fehler beim Speichern der Bewerbung. Bitte versuche es später erneut.",
           ephemeral: true,
         });
       }
@@ -347,39 +379,37 @@ export class DiscordBot {
 
   private async sendStartupMessage() {
     try {
-      // Sende Startnachricht an den ersten Textkanal jedes Servers
       const guilds = this.client?.guilds.cache;
-      
+
       guilds?.forEach(async (guild) => {
         const channel = guild.channels.cache.find(
-          (ch: any) => ch.type === 0 && ch.permissionsFor(guild.members.me!)?.has(PermissionFlagsBits.SendMessages)
+          (ch: any) =>
+            ch.type === 0 &&
+            ch
+              .permissionsFor(guild.members.me!)
+              ?.has(PermissionFlagsBits.SendMessages),
         );
 
         if (channel) {
           const startEmbed = {
-            color: 0x4CAF50,
-            title: '✅ Emergency Assistant ist online!',
-            description: 'Der Bot und das Web-Portal sind jetzt aktiv und einsatzbereit.',
+            color: 0x4caf50,
+            title: "GRP Bot ist online!",
+            description:
+              "Der Bot und das Web-Portal sind jetzt aktiv und einsatzbereit.",
             fields: [
+              { name: "🤖 Bot-Status", value: "Online", inline: true },
               {
-                name: '🤖 Bot-Status',
-                value: 'Online',
+                name: "🎮 Aktivität",
+                value: "Wechselt automatisch",
                 inline: true,
               },
               {
-                name: '🎮 Aktivität',
-                value: 'Spielt Hamburg Response Network (HRN)',
-                inline: true,
-              },
-              {
-                name: '📋 Befehle',
-                value: 'Nutze `/hilfe` um alle Befehle zu sehen',
+                name: "📋 Befehle",
+                value: "Nutze `/hilfe` um alle Befehle zu sehen",
                 inline: false,
               },
             ],
-            footer: {
-              text: 'Emergency Hamburg RP Server',
-            },
+            footer: { text: "GRP" },
             timestamp: new Date().toISOString(),
           };
 
@@ -387,7 +417,7 @@ export class DiscordBot {
         }
       });
     } catch (error) {
-      console.error('❌ Fehler beim Senden der Startnachricht:', error);
+      console.error("❌ Fehler beim Senden der Startnachricht:", error);
     }
   }
 
@@ -396,7 +426,7 @@ export class DiscordBot {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    
+
     if (days > 0) return `${days}d ${hours}h ${minutes}m`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
@@ -406,9 +436,9 @@ export class DiscordBot {
     return {
       online: this.ready,
       uptime: Math.floor((Date.now() - this.startTime) / 1000),
-      version: '1.0.0',
+      version: "1.0.0",
       serverCount: this.client?.guilds.cache.size || 0,
-      status: 'Spielt Hamburg Response Network (HRN)',
+      status: "Wechselt automatisch",
       startTime: this.startTime,
     };
   }
@@ -433,11 +463,13 @@ export class DiscordBot {
   }
 
   async sendMessage(channelId: string, content: string) {
-    if (!this.client) throw new Error('Bot ist nicht initialisiert');
+    if (!this.client) throw new Error("Bot ist nicht initialisiert");
 
     const channel = await this.client.channels.fetch(channelId);
-    if (!channel || !('send' in channel)) {
-      throw new Error('Kanal nicht gefunden oder kann keine Nachrichten empfangen');
+    if (!channel || !("send" in channel)) {
+      throw new Error(
+        "Kanal nicht gefunden oder kann keine Nachrichten empfangen",
+      );
     }
 
     await (channel as any).send(content);
