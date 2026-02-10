@@ -88,45 +88,67 @@ export class DiscordBot {
 
     const rest = new REST({ version: "10" }).setToken(token);
 
-    const commands = [
-      {
-        name: "ping",
-        description: "Prüft ob der Bot online ist",
-      },
-      {
-        name: "hilfe",
-        description: "Zeigt alle verfügbaren Befehle",
-      },
-      {
-        name: "info",
-        description: "Zeigt Bot-Informationen und Portal-Link",
-      },
-      {
-        name: "bewerbung",
-        description: "Startet eine Bewerbung für den Server",
-      },
-      {
-        name: "ankündigung",
-        description:
-          "Sendet eine Ankündigung in den aktuellen Kanal (nur für autorisierte Rollen)",
-        options: [
-          {
-            name: "nachricht",
-            type: ApplicationCommandOptionType.String,
-            description: "Die Nachricht die gesendet werden soll",
-            required: true,
-          },
-        ],
-      },
-      {
-        name: "startup",
-        description: "Sendet die Startnachricht manuell (nur Admins)",
-      },
-    ];
-
     try {
+      // First, fetch existing commands to see what's currently registered
+      const existingCommands = await rest.get(
+        Routes.applicationCommands(this.client.application.id)
+      ) as any[];
+
+      const commands = [
+        {
+          name: "ping",
+          description: "Prüft ob der Bot online ist",
+          type: 1,
+        },
+        {
+          name: "hilfe",
+          description: "Zeigt alle verfügbaren Befehle",
+          type: 1,
+        },
+        {
+          name: "info",
+          description: "Zeigt Bot-Informationen und Portal-Link",
+          type: 1,
+        },
+        {
+          name: "bewerbung",
+          description: "Startet eine Bewerbung für den Server",
+          type: 1,
+        },
+        {
+          name: "ankündigung",
+          description:
+            "Sendet eine Ankündigung in den aktuellen Kanal (nur für autorisierte Rollen)",
+          type: 1,
+          options: [
+            {
+              name: "nachricht",
+              type: ApplicationCommandOptionType.String,
+              description: "Die Nachricht die gesendet werden soll",
+              required: true,
+            },
+          ],
+        },
+        {
+          name: "startup",
+          description: "Sendet die Startnachricht manuell (nur Admins)",
+          type: 1,
+        },
+      ];
+
+      // Check for 'Entry Point' commands (type 4) or other special commands
+      // that Discord requires us to keep during a bulk update.
+      const specialCommands = existingCommands.filter(cmd => cmd.type === 4);
+      
+      const finalCommands = [...commands, ...specialCommands.map(cmd => ({
+        name: cmd.name,
+        description: cmd.description,
+        type: cmd.type,
+        options: cmd.options,
+      }))];
+
       await rest.put(Routes.applicationCommands(this.client.application.id), {
-        body: commands,
+        body: finalCommands,
       });
       console.log("✅ Slash-Commands erfolgreich registriert");
     } catch (error) {
