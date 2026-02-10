@@ -50,12 +50,12 @@ export class DiscordBot {
         setInterval(() => {
           if (!this.client?.user) return;
 
+          this.client.user.setPresence({
             activities: [activities[current]],
             status: "online",
           });
 
           current = (current + 1) % activities.length;
-          this.client.user.setPresence({
         }, 10000); // alle 10 Sekunden wechseln
 
         // Slash-Commands registrieren
