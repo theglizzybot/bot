@@ -30,7 +30,6 @@ export class DiscordBot {
         intents: [
           GatewayIntentBits.Guilds,
           GatewayIntentBits.GuildMessages,
-          GatewayIntentBits.MessageContent,
         ],
       });
 

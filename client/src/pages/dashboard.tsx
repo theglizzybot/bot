@@ -3,8 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Activity, Server, FileText, Clock } from "lucide-react";
 import type { BotStatus } from "@shared/schema";
+import { useTranslation } from "react-i18next";
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { data: botStatus, isLoading } = useQuery<BotStatus>({
     queryKey: ["/api/bot/status"],
   });
@@ -25,7 +27,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            Übersicht über den Emergency Assistant Bot-Status
+            {t('bot_info_description', 'Übersicht über den Emergency Assistant Bot-Status')}
           </p>
         </div>
 
@@ -48,7 +50,7 @@ export default function Dashboard() {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               <Card data-testid="card-bot-status">
                 <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Bot Status</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t('status')}</CardTitle>
                   <Activity className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -56,12 +58,12 @@ export default function Dashboard() {
                     {botStatus?.online ? (
                       <>
                         <div className="w-2 h-2 rounded-full bg-status-online animate-pulse"></div>
-                        <span className="text-2xl font-bold text-foreground">Online</span>
+                        <span className="text-2xl font-bold text-foreground">{t('online')}</span>
                       </>
                     ) : (
                       <>
                         <div className="w-2 h-2 rounded-full bg-status-offline"></div>
-                        <span className="text-2xl font-bold text-foreground">Offline</span>
+                        <span className="text-2xl font-bold text-foreground">{t('offline')}</span>
                       </>
                     )}
                   </div>
@@ -73,7 +75,7 @@ export default function Dashboard() {
 
               <Card data-testid="card-uptime">
                 <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Laufzeit</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t('uptime')}</CardTitle>
                   <Clock className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -81,14 +83,14 @@ export default function Dashboard() {
                     {botStatus?.uptime ? formatUptime(botStatus.uptime) : "0m"}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Seit Start aktiv
+                    {t('active_since_start', 'Seit Start aktiv')}
                   </p>
                 </CardContent>
               </Card>
 
               <Card data-testid="card-servers">
                 <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Server</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t('servers')}</CardTitle>
                   <Server className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -96,14 +98,14 @@ export default function Dashboard() {
                     {botStatus?.serverCount || 0}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Verbundene Server
+                    {t('connected_servers', 'Verbundene Server')}
                   </p>
                 </CardContent>
               </Card>
 
               <Card data-testid="card-version">
                 <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Version</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t('version')}</CardTitle>
                   <FileText className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -111,7 +113,7 @@ export default function Dashboard() {
                     {botStatus?.version || "1.0.0"}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Aktuelle Bot-Version
+                    {t('current_bot_version', 'Aktuelle Bot-Version')}
                   </p>
                 </CardContent>
               </Card>
@@ -119,9 +121,9 @@ export default function Dashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Bot-Informationen</CardTitle>
+                <CardTitle>{t('bot_info')}</CardTitle>
                 <CardDescription>
-                  Details zum Emergency Assistant Discord-Bot
+                  {t('bot_details_desc', 'Details zum Emergency Assistant Discord-Bot')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -131,11 +133,11 @@ export default function Dashboard() {
                     <p className="text-sm text-muted-foreground">Emergency Assistant</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground mb-1">Server</p>
+                    <p className="text-sm font-medium text-foreground mb-1">{t('servers')}</p>
                     <p className="text-sm text-muted-foreground">Emergency Hamburg RP Server</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground mb-1">Verfügbare Befehle</p>
+                    <p className="text-sm font-medium text-foreground mb-1">{t('available_commands', 'Verfügbare Befehle')}</p>
                     <div className="flex flex-wrap gap-2 mt-2">
                       <Badge variant="secondary" className="text-xs">/bewerbung</Badge>
                       <Badge variant="secondary" className="text-xs">/hilfe</Badge>

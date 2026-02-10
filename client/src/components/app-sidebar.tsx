@@ -1,4 +1,4 @@
-import { Home, Server, Send, FileText, Settings } from "lucide-react";
+import { Home, Server, Send, FileText, Settings, Languages } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -10,34 +10,43 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
-
-const menuItems = [
-  {
-    title: "Dashboard",
-    url: "/",
-    icon: Home,
-  },
-  {
-    title: "Server & Kanäle",
-    url: "/servers",
-    icon: Server,
-  },
-  {
-    title: "Nachricht senden",
-    url: "/send-message",
-    icon: Send,
-  },
-  {
-    title: "Bewerbungen",
-    url: "/applications",
-    icon: FileText,
-  },
-];
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 
 export function AppSidebar() {
   const [location] = useLocation();
+  const { t, i18n } = useTranslation();
+
+  const menuItems = [
+    {
+      title: t('Dashboard'),
+      url: "/",
+      icon: Home,
+    },
+    {
+      title: t('servers'),
+      url: "/servers",
+      icon: Server,
+    },
+    {
+      title: t('send_message'),
+      url: "/send-message",
+      icon: Send,
+    },
+    {
+      title: t('Bewerbungen', 'Bewerbungen'),
+      url: "/applications",
+      icon: FileText,
+    },
+  ];
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'de' ? 'en' : 'de';
+    i18n.changeLanguage(newLang);
+  };
 
   return (
     <Sidebar>
@@ -77,6 +86,18 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="p-4 border-t border-sidebar-border">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="w-full justify-start gap-2" 
+          onClick={toggleLanguage}
+          data-testid="button-toggle-language"
+        >
+          <Languages className="w-4 h-4" />
+          <span>{i18n.language === 'de' ? 'English' : 'Deutsch'}</span>
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   );
 }
