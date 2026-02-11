@@ -79,10 +79,10 @@ export class DiscordBot {
         if (!message.guild) return;
 
         const channel = message.channel as any;
-        const channelName = channel.name?.toLowerCase() || "";
+        const excludedChannelIds = ["1469462344127086612", "1469462378402807982"];
 
-        // Ausgeschlossene Kanäle
-        if (channelName.includes("bug-reports") || channelName.includes("suggestions")) {
+        // Ausgeschlossene Kanäle nach ID
+        if (excludedChannelIds.includes(channel.id)) {
           return;
         }
 
@@ -91,7 +91,7 @@ export class DiscordBot {
 
         if (greetings.some(g => content === g || content.startsWith(g + " "))) {
           try {
-            await message.reply(`Hallo ${message.author.username}! 👋`);
+            await message.reply(`Hi, ${message.author}`);
           } catch (error) {
             console.error("❌ Fehler beim Antworten auf Begrüßung:", error);
           }
