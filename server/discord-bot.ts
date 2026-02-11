@@ -73,6 +73,31 @@ export class DiscordBot {
         }
       });
 
+      // Begrüßungs-Handler
+      this.client.on("messageCreate", async (message) => {
+        if (message.author.bot) return;
+        if (!message.guild) return;
+
+        const channel = message.channel as any;
+        const channelName = channel.name?.toLowerCase() || "";
+
+        // Ausgeschlossene Kanäle
+        if (channelName.includes("bug-reports") || channelName.includes("suggestions")) {
+          return;
+        }
+
+        const content = message.content.toLowerCase();
+        const greetings = ["hi", "hallo", "hello", "hey", "moin", "servus"];
+
+        if (greetings.some(g => content === g || content.startsWith(g + " "))) {
+          try {
+            await message.reply(`Hallo ${message.author.username}! 👋`);
+          } catch (error) {
+            console.error("❌ Fehler beim Antworten auf Begrüßung:", error);
+          }
+        }
+      });
+
       await this.client.login(token);
     } catch (error) {
       console.error("❌ Fehler beim Initialisieren des Discord-Bots:", error);
