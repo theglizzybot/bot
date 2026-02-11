@@ -86,10 +86,10 @@ export class DiscordBot {
           return;
         }
 
-        const content = message.content.toLowerCase();
+        const content = message.content.toLowerCase().trim();
         const greetings = ["hi", "hallo", "hello", "hey", "moin", "servus"];
 
-        if (greetings.some(g => content === g || content.startsWith(g + " "))) {
+        if (greetings.some(g => content === g || content.startsWith(g + " ") || content.startsWith(g + "!"))) {
           try {
             await message.reply(`Hi, ${message.author}`);
           } catch (error) {
