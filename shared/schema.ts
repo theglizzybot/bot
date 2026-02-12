@@ -52,7 +52,12 @@ export type BotStatus = z.infer<typeof botStatusSchema>;
 // Nachricht senden Schema
 export const sendMessageSchema = z.object({
   channelId: z.string().min(1, "Kanal-ID ist erforderlich"),
-  content: z.string().min(1, "Nachricht darf nicht leer sein").max(2000, "Nachricht ist zu lang"),
+  content: z.string().max(2000, "Nachricht ist zu lang").optional(),
+  embed: z.object({
+    title: z.string().optional(),
+    description: z.string().optional(),
+    color: z.string().optional(),
+  }).optional(),
 });
 
 export type SendMessage = z.infer<typeof sendMessageSchema>;

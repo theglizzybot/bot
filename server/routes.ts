@@ -38,7 +38,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(503).json({ message: "Bot ist noch nicht bereit" });
       }
 
-      await discordBot.sendMessage(validated.channelId, validated.content);
+      await discordBot.sendMessage(validated.channelId, {
+        content: validated.content,
+        embed: validated.embed
+      });
       res.json({ success: true, message: "Nachricht erfolgreich gesendet" });
     } catch (error: any) {
       if (error instanceof z.ZodError) {

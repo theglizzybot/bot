@@ -508,7 +508,7 @@ export class DiscordBot {
     }));
   }
 
-  async sendMessage(channelId: string, content: string) {
+  async sendMessage(channelId: string, options: { content?: string, embed?: { title?: string, description?: string, color?: string } }) {
     if (!this.client) throw new Error("Bot ist nicht initialisiert");
 
     const channel = await this.client.channels.fetch(channelId);
@@ -518,7 +518,18 @@ export class DiscordBot {
       );
     }
 
-    await (channel as any).send(content);
+    const sendOptions: any = {};
+    if (options.content) sendOptions.content = options.content;
+    if (options.embed) {
+      sendOptions.embeds = [{
+        title: options.embed.title,
+        description: options.embed.description,
+        color: options.embed.color ? parseInt(options.embed.color.replace("#", ""), 16) : 0xd32f2f,
+        timestamp: new Date().toISOString(),
+      }];
+    }
+
+    await (channel as any).send(sendOptions);
   }
 
   isReady(): boolean {
