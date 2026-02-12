@@ -98,7 +98,7 @@ export default function SendMessagePage() {
   };
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="h-full overflow-y-auto">
       <div className="max-w-4xl mx-auto p-6 space-y-8">
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Nachricht senden</h1>

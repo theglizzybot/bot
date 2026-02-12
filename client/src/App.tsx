@@ -39,7 +39,7 @@ export default function App() {
               <header className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
                 <SidebarTrigger data-testid="button-sidebar-toggle" />
                 <h1 className="text-sm font-medium text-muted-foreground">
-                  Emergency Hamburg RP Portal
+                  Minecraft Bot Portal
                 </h1>
               </header>
               <main className="flex-1 overflow-hidden">

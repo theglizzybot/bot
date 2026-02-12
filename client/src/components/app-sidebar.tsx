@@ -57,9 +57,9 @@ export function AppSidebar() {
           </div>
           <div className="flex flex-col min-w-0">
             <h2 className="text-base font-semibold text-sidebar-foreground truncate">
-              Emergency Assistant
+              Minecraft Bot
             </h2>
-            <p className="text-xs text-muted-foreground truncate">Hamburg RP Portal</p>
+            <p className="text-xs text-muted-foreground truncate">Dashboard</p>
           </div>
         </div>
       </SidebarHeader>

@@ -27,7 +27,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            {t('bot_info_description', 'Übersicht über den Emergency Assistant Bot-Status')}
+            {t('bot_info_description', 'Übersicht über den Minecraft Bot-Status')}
           </p>
         </div>
 
@@ -123,18 +123,18 @@ export default function Dashboard() {
               <CardHeader>
                 <CardTitle>{t('bot_info')}</CardTitle>
                 <CardDescription>
-                  {t('bot_details_desc', 'Details zum Emergency Assistant Discord-Bot')}
+                  {t('bot_details_desc', 'Details zum Minecraft Discord-Bot')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <p className="text-sm font-medium text-foreground mb-1">Bot Name</p>
-                    <p className="text-sm text-muted-foreground">Emergency Assistant</p>
+                    <p className="text-sm text-muted-foreground">Minecraft Bot</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground mb-1">{t('servers')}</p>
-                    <p className="text-sm text-muted-foreground">Emergency Hamburg RP Server</p>
+                    <p className="text-sm text-muted-foreground">Minecraft Community Server</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground mb-1">{t('available_commands')}</p>
