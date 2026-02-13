@@ -75,6 +75,7 @@ export class DiscordBot {
 
       // Begrüßungs-Handler
       this.client.on("messageCreate", async (message) => {
+        console.log(`📩 Nachricht empfangen: "${message.content}" in Kanal: ${message.channelId}`);
         if (message.author.bot) return;
         if (!message.guild) return;
 
@@ -83,6 +84,7 @@ export class DiscordBot {
 
         // Ausgeschlossene Kanäle nach ID
         if (excludedChannelIds.includes(channel.id)) {
+          console.log(`🚫 Kanal ${channel.id} ist ausgeschlossen.`);
           return;
         }
 
@@ -90,6 +92,7 @@ export class DiscordBot {
         const greetings = ["hi", "hallo", "hello", "hey", "moin", "servus"];
 
         if (greetings.some(g => content === g || content.startsWith(g + " ") || content.startsWith(g + "!"))) {
+          console.log(`👋 Begrüßung erkannt! Antworte an ${message.author.username}`);
           try {
             await message.reply(`Hi, ${message.author}`);
           } catch (error) {
