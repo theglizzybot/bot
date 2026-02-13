@@ -92,7 +92,13 @@ export class DiscordBot {
         const content = message.content.toLowerCase().trim();
         const greetings = ["hi", "hallo", "hello", "hey", "moin", "servus"];
 
-        if (greetings.some(g => content === g || content.startsWith(g + " ") || content.startsWith(g + "!"))) {
+        // Überprüft ob die Nachricht mit einer Begrüßung beginnt (auch mit Satzzeichen)
+        const isGreeting = greetings.some(g => {
+          const regex = new RegExp(`^${g}\\b`, 'i');
+          return regex.test(content);
+        });
+
+        if (isGreeting) {
           console.log(`👋 Begrüßung erkannt! Antworte an ${message.author.username}`);
           try {
             await message.reply(`Hi, ${message.author}`);
