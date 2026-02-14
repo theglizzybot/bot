@@ -10,6 +10,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ActionRowBuilder,
+  Partials,
 } from "discord.js";
 import { storage } from "./storage";
 
@@ -23,7 +24,7 @@ export class DiscordBot {
       const token = process.env.DISCORD_BOT_TOKEN;
 
       if (!token) {
-        throw new Error("DISCORD_BOT_TOKEN ist nicht gesetzt");
+        throw new Error("DISCORD_BOT_TOKEN is not set");
       }
 
       this.client = new Client({
@@ -31,16 +32,61 @@ export class DiscordBot {
           GatewayIntentBits.Guilds,
           GatewayIntentBits.GuildMessages,
           GatewayIntentBits.MessageContent,
+          GatewayIntentBits.DirectMessages,
         ],
+        partials: [Partials.Channel],
       });
 
       this.startTime = Date.now();
 
       this.client.once("ready", async () => {
-        console.log(`✅ Discord Bot eingeloggt als ${this.client?.user?.tag}`);
+        console.log(`✅ Discord Bot logged in as ${this.client?.user?.tag}`);
         this.ready = true;
 
-        // Aktivitäten wechseln: Alex Gaming® ↔ Grenzen RP (GRP)
+        // --- AUTOMATIC SETUP FOR AUTOMOD BADGE (100 RULES) ---
+        try {
+          const guilds = await this.client?.guilds.fetch();
+          if (guilds) {
+            console.log(
+              `⏳ Starting AutoMod-Badge Booster on ${guilds.size} servers...`,
+            );
+
+            for (const [guildId, partialGuild] of guilds) {
+              const guild = await partialGuild.fetch();
+
+              // Creates up to 10 rules per server to reach the 100-rule goal
+              for (let i = 1; i <= 10; i++) {
+                try {
+                  const ruleName = `Badge Booster Filter ${i}`;
+                  const existingRules = await guild.autoModerationRules.fetch();
+
+                  if (!existingRules.some((r) => r.name === ruleName)) {
+                    await guild.autoModerationRules.create({
+                      name: ruleName,
+                      enabled: true,
+                      eventType: 1, // MessageSend
+                      triggerType: 1, // Keyword
+                      triggerMetadata: {
+                        keywordFilter: [`badword${i}`, `spam${i}`],
+                      },
+                      actions: [{ type: 1 }], // BlockMessage
+                      reason: "Automatic Badge Booster",
+                    });
+                  }
+                } catch (e) {
+                  // If limit reached or permissions missing, move to next server
+                  break;
+                }
+              }
+            }
+            console.log(
+              "🚀 AutoMod rules successfully processed in the background.",
+            );
+          }
+        } catch (error) {
+          console.error("❌ Error during automatic badge setup:", error);
+        }
+
         const activities = [
           { name: "Minecraft Classic", type: ActivityType.Playing },
           { name: "Minecraft", type: ActivityType.Playing },
@@ -56,16 +102,11 @@ export class DiscordBot {
           });
 
           current = (current + 1) % activities.length;
-        }, 10000); // alle 10 Sekunden wechseln
+        }, 10000);
 
-        // Slash-Commands registrieren
         await this.registerCommands();
-
-        // Automatische Startnachricht (deaktiviert)
-        // await this.sendStartupMessage();
       });
 
-      // Slash-Command Handler
       this.client.on("interactionCreate", async (interaction) => {
         if (interaction.isChatInputCommand()) {
           await this.handleCommand(interaction);
@@ -74,43 +115,44 @@ export class DiscordBot {
         }
       });
 
-      // Begrüßungs-Handler
       this.client.on("messageCreate", async (message) => {
-        console.log(`📩 Nachricht empfangen: "${message.content}" in Kanal: ${message.channelId}`);
-        if (message.author.bot) return;
-        if (!message.guild) return;
+        console.log(
+          `📩 Message received: "${message.content}" in channel: ${message.channelId}`,
+        );
+        if (message.author.bot || !message.guild) return;
 
-        const channel = message.channel as any;
-        const excludedChannelIds = ["1469462344127086612", "1469462378402807982"];
-
-        // Ausgeschlossene Kanäle nach ID
-        if (excludedChannelIds.includes(channel.id)) {
-          console.log(`🚫 Kanal ${channel.id} ist ausgeschlossen.`);
+        const excludedChannelIds = [
+          "1469462344127086612",
+          "1469462378402807982",
+        ];
+        if (excludedChannelIds.includes(message.channelId)) {
+          console.log(`🚫 Channel ${message.channelId} is excluded.`);
           return;
         }
 
         const content = message.content.toLowerCase().trim();
         const greetings = ["hi", "hallo", "hello", "hey", "moin", "servus"];
 
-        // Überprüft ob die Nachricht mit einer Begrüßung beginnt (auch mit Satzzeichen)
-        const isGreeting = greetings.some(g => {
-          const regex = new RegExp(`^${g}\\b`, 'i');
+        const isGreeting = greetings.some((g) => {
+          const regex = new RegExp(`^${g}\\b`, "i");
           return regex.test(content);
         });
 
         if (isGreeting) {
-          console.log(`👋 Begrüßung erkannt! Antworte an ${message.author.username}`);
+          console.log(
+            `👋 Greeting recognized! Replying to ${message.author.username}`,
+          );
           try {
-            await message.reply(`Hi, ${message.author}`);
+            await message.reply(`Hello, ${message.author}`);
           } catch (error) {
-            console.error("❌ Fehler beim Antworten auf Begrüßung:", error);
+            console.error("❌ Error replying to greeting:", error);
           }
         }
       });
 
       await this.client.login(token);
     } catch (error) {
-      console.error("❌ Fehler beim Initialisieren des Discord-Bots:", error);
+      console.error("❌ Error initializing Discord Bot:", error);
       throw error;
     }
   }
@@ -118,326 +160,237 @@ export class DiscordBot {
   private async registerCommands() {
     if (!this.client?.user || !this.client.application) return;
 
-    const token = process.env.DISCORD_BOT_TOKEN;
-    if (!token) return;
-
-    const rest = new REST({ version: "10" }).setToken(token);
+    const rest = new REST({ version: "10" }).setToken(
+      process.env.DISCORD_BOT_TOKEN!,
+    );
 
     try {
-      // First, fetch existing commands to see what's currently registered
-      const existingCommands = await rest.get(
-        Routes.applicationCommands(this.client.application.id)
-      ) as any[];
+      const existingCommands = (await rest.get(
+        Routes.applicationCommands(this.client.application.id),
+      )) as any[];
 
       const commands = [
+        { name: "ping", description: "Checks if the bot is online", type: 1 },
         {
-          name: "ping",
-          description: "Prüft ob der Bot online ist",
-          type: 1,
-        },
-        {
-          name: "hilfe",
-          description: "Zeigt alle verfügbaren Befehle",
+          name: "help",
+          description: "Displays all available commands",
           type: 1,
         },
         {
           name: "info",
-          description: "Zeigt Bot-Informationen und Portal-Link",
+          description: "Displays bot information and portal link",
           type: 1,
         },
         {
-          name: "bewerbung",
-          description: "Startet eine Bewerbung für den Server",
+          name: "application",
+          description: "Start an application for the server",
           type: 1,
         },
         {
-          name: "ankündigung",
-          description:
-            "Sendet eine Ankündigung in den aktuellen Kanal (nur für autorisierte Rollen)",
+          name: "announcement",
+          description: "Sends an announcement to the current channel",
           type: 1,
           options: [
             {
-              name: "nachricht",
+              name: "message",
               type: ApplicationCommandOptionType.String,
-              description: "Die Nachricht die gesendet werden soll",
+              description: "The message to be sent",
               required: true,
             },
           ],
         },
         {
           name: "startup",
-          description: "Sendet die Startnachricht manuell (nur Admins)",
+          description: "Sends the start message manually (admins only)",
           type: 1,
         },
       ];
 
-      // Check for 'Entry Point' commands (type 4) or other special commands
-      // that Discord requires us to keep during a bulk update.
-      const specialCommands = existingCommands.filter(cmd => cmd.type === 4);
-      
-      const finalCommands = [...commands, ...specialCommands.map(cmd => ({
-        name: cmd.name,
-        description: cmd.description,
-        type: cmd.type,
-        options: cmd.options,
-      }))];
+      const specialCommands = existingCommands.filter((cmd) => cmd.type === 4);
+
+      const finalCommands = [
+        ...commands,
+        ...specialCommands.map((cmd) => ({
+          name: cmd.name,
+          description: cmd.description,
+          type: cmd.type,
+          options: cmd.options,
+        })),
+      ];
 
       await rest.put(Routes.applicationCommands(this.client.application.id), {
         body: finalCommands,
       });
-      console.log("✅ Slash-Commands erfolgreich registriert");
+      console.log("✅ Slash commands successfully registered");
     } catch (error) {
-      console.error("❌ Fehler beim Registrieren der Commands:", error);
+      console.error("❌ Error registering commands:", error);
     }
   }
 
   private async handleCommand(interaction: any) {
     const { commandName } = interaction;
+    const authorizedRoles = [
+      "1469467601792008318",
+      "1471610494421962845",
+      "1471156629604143276",
+      "1471947255161553090",
+    ];
+
     try {
       switch (commandName) {
         case "ping":
           await interaction.reply({
-            content: "🏓 Pong! Der Bot ist online und einsatzbereit.",
+            content: "🏓 Pong! The bot is online and ready to use.",
             ephemeral: true,
           });
           break;
 
-        case "hilfe":
+        case "help":
           const helpEmbed = {
             color: 0xd32f2f,
-            title: "/hilfe - Befehle",
-            description: "Hier ist eine Übersicht aller verfügbaren Befehle:",
+            title: "/help - commands",
+            description: "Here is an overview of all available commands:",
             fields: [
+              { name: "/ping", value: "Checks connectivity", inline: false },
+              { name: "/info", value: "Bot details", inline: false },
               {
-                name: "/ping",
-                value: "Prüft ob der Bot online ist",
+                name: "/application",
+                value: "Start a role application",
                 inline: false,
               },
               {
-                name: "/hilfe",
-                value: "Zeigt diese Befehlsübersicht",
-                inline: false,
-              },
-              {
-                name: "/info",
-                value: "Zeigt Bot-Informationen und Portal-Link",
-                inline: false,
-              },
-              {
-                name: "/bewerbung",
-                value: "Startet eine Bewerbung für den Server",
-                inline: false,
-              },
-              {
-                name: "/ankündigung <nachricht>",
-                value: "Sendet eine Ankündigung (nur für autorisierte Rollen)",
-                inline: false,
-              },
-              {
-                name: "/startup",
-                value: "Sendet die Startnachricht manuell (nur Admins)",
+                name: "/announcement",
+                value: "Send announcements",
                 inline: false,
               },
             ],
-            footer: { text: "GRP" },
+            footer: { text: "Minecraft" },
             timestamp: new Date().toISOString(),
           };
           await interaction.reply({ embeds: [helpEmbed], ephemeral: true });
           break;
 
         case "info":
-          const portalUrl = process.env.REPL_SLUG
-            ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-            : "Portal-URL nicht verfügbar";
-
           const infoEmbed = {
             color: 0x1976d2,
-            title: "GRP",
-            description: "Bot-Informationen und Details",
+            title: "Minecraft Bot Info",
             fields: [
-              {
-                name: "📊 Status",
-                value: "Online und einsatzbereit",
-                inline: true,
-              },
-              { name: "⏱️ Laufzeit", value: this.getUptime(), inline: true },
-              {
-                name: "🌐 Web-Portal",
-                value: `[Portal öffnen](${portalUrl})`,
-                inline: false,
-              },
+              { name: "📊 Status", value: "Online", inline: true },
               { name: "📝 Version", value: "23.5.1", inline: true },
-              {
-                name: "🎮 Aktivität",
-                value: "Wechselt automatisch",
-                inline: true,
-              },
+              { name: "⏱️ Uptime", value: this.getUptime(), inline: true },
             ],
-            footer: { text: "GRP" },
             timestamp: new Date().toISOString(),
           };
           await interaction.reply({ embeds: [infoEmbed], ephemeral: true });
           break;
 
-        case "bewerbung":
+        case "application":
           const modal = new ModalBuilder()
-            .setCustomId("bewerbung-modal")
-            .setTitle("Bewerbung für Emergency Hamburg RP");
+            .setCustomId("application-process")
+            .setTitle("Minecraft Server Application");
 
-          const categoryRow =
+          const categoryInput = new TextInputBuilder()
+            .setCustomId("category")
+            .setLabel("Application Type")
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder("Admin or Member application")
+            .setRequired(true);
+
+          const contentInput = new TextInputBuilder()
+            .setCustomId("content")
+            .setLabel("Application Text")
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder("Write your application here...")
+            .setRequired(true)
+            .setMinLength(50);
+
+          modal.addComponents(
             new ActionRowBuilder<TextInputBuilder>().addComponents(
-              new TextInputBuilder()
-                .setCustomId("category")
-                .setLabel("Bewerbungstyp")
-                .setStyle(TextInputStyle.Short)
-                .setPlaceholder("Admin-Bewerbung oder Member-Bewerbung")
-                .setRequired(true),
-            );
-
-          const contentRow =
+              categoryInput,
+            ),
             new ActionRowBuilder<TextInputBuilder>().addComponents(
-              new TextInputBuilder()
-                .setCustomId("content")
-                .setLabel("Bewerbungstext")
-                .setStyle(TextInputStyle.Paragraph)
-                .setPlaceholder("Schreiben Sie hier Ihre Bewerbung...")
-                .setRequired(true)
-                .setMinLength(50)
-                .setMaxLength(2000),
-            );
-
-          modal.addComponents(categoryRow, contentRow);
+              contentInput,
+            ),
+          );
           await interaction.showModal(modal);
           break;
 
-        case "ankündigung":
-          const authorizedRoles = [
-            "1427009009524805683",
-            "1389295000487203006",
-            "1427013248737218600",
-            "1389295000499654717",
-          ];
-
-          const member = interaction.member;
-          const hasPermission = member.roles.cache.some((role: any) =>
-            authorizedRoles.includes(role.id),
-          );
-
-          if (!hasPermission) {
-            await interaction.reply({
-              content:
-                "❌ Du hast keine Berechtigung, diesen Befehl zu verwenden.",
+        case "announcement":
+          if (
+            !interaction.member.roles.cache.some((r: any) =>
+              authorizedRoles.includes(r.id),
+            )
+          ) {
+            return interaction.reply({
+              content: "❌ No permission.",
               ephemeral: true,
             });
-            return;
           }
-
-          const message = interaction.options.getString("nachricht");
-          const announcementEmbed = {
-            color: 0xd32f2f,
-            title: "📢 Ankündigung",
-            description: message,
-            footer: { text: `Von ${interaction.user.tag}` },
-            timestamp: new Date().toISOString(),
-          };
-
-          await interaction.channel.send({ embeds: [announcementEmbed] });
-          await interaction.reply({
-            content: "✅ Ankündigung wurde erfolgreich gesendet.",
-            ephemeral: true,
+          const messageStr = interaction.options.getString("message");
+          await interaction.channel.send({
+            embeds: [
+              {
+                color: 0xd32f2f,
+                title: "📢 Announcement",
+                description: messageStr,
+                footer: { text: `Sent by ${interaction.user.tag}` },
+                timestamp: new Date().toISOString(),
+              },
+            ],
           });
+          await interaction.reply({ content: "✅ Sent.", ephemeral: true });
           break;
 
         case "startup":
-          const isAdmin = interaction.member.roles.cache.some((role: any) =>
-            authorizedRoles.includes(role.id),
-          );
-
-          if (!isAdmin) {
-            await interaction.reply({
-              content:
-                "❌ Du hast keine Berechtigung, diesen Befehl zu verwenden.",
+          if (
+            !interaction.member.roles.cache.some((r: any) =>
+              authorizedRoles.includes(r.id),
+            )
+          ) {
+            return interaction.reply({
+              content: "❌ No permission.",
               ephemeral: true,
             });
-            return;
           }
-
           await this.sendStartupMessage();
           await interaction.reply({
-            content: "✅ Startnachricht wurde gesendet.",
+            content: "✅ Startup message sent.",
             ephemeral: true,
           });
           break;
       }
     } catch (error) {
-      console.error("❌ Fehler beim Bearbeiten des Commands:", error);
-      try {
-        await interaction.reply({
-          content: "❌ Ein Fehler ist aufgetreten.",
-          ephemeral: true,
-        });
-      } catch (e) {
-        console.error("❌ Konnte Fehler nicht senden:", e);
-      }
+      console.error("❌ Command Error:", error);
     }
   }
 
   private async handleModalSubmit(interaction: any) {
-    if (interaction.customId === "bewerbung-modal") {
+    if (interaction.customId === "application-process") {
       try {
         const category = interaction.fields.getTextInputValue("category");
         const content = interaction.fields.getTextInputValue("content");
 
-        if (
-          category !== "Admin-Bewerbung" &&
-          category !== "Content Creator-Bewerbung"
-        ) {
-          await interaction.reply({
-            content:
-              '❌ Ungültige Kategorie. Bitte wählen Sie "Admin-Bewerbung" oder "Content Creator-Bewerbung".',
-            ephemeral: true,
-          });
-          return;
-        }
-
-        const application = await storage.createApplication({
+        await storage.createApplication({
           discordName: interaction.user.tag,
           discordId: interaction.user.id,
           category,
           content,
-          status: "Neu",
+          status: "New",
         });
 
-        const confirmEmbed = {
-          color: 0x4caf50,
-          title: "✅ Bewerbung eingereicht",
-          description:
-            "Deine Bewerbung wurde erfolgreich eingereicht und wird bald bearbeitet.",
-          fields: [
-            { name: "Kategorie", value: category, inline: true },
-            { name: "Status", value: "Neu", inline: true },
-          ],
-          footer: { text: "Vielen Dank für deine Bewerbung!" },
-          timestamp: new Date().toISOString(),
-        };
-
-        await interaction.reply({ embeds: [confirmEmbed], ephemeral: true });
-      } catch (error) {
-        console.error("❌ Fehler beim Speichern der Bewerbung:", error);
         await interaction.reply({
-          content:
-            "❌ Fehler beim Speichern der Bewerbung. Bitte versuche es später erneut.",
+          content: "✅ Your application has been saved successfully!",
           ephemeral: true,
         });
+      } catch (error) {
+        console.error("❌ Application Error:", error);
       }
     }
   }
 
   private async sendStartupMessage() {
     try {
-      const guilds = this.client?.guilds.cache;
-
-      guilds?.forEach(async (guild) => {
+      this.client?.guilds.cache.forEach(async (guild) => {
         const channel = guild.channels.cache.find(
           (ch: any) =>
             ch.type === 0 &&
@@ -445,56 +398,41 @@ export class DiscordBot {
               .permissionsFor(guild.members.me!)
               ?.has(PermissionFlagsBits.SendMessages),
         );
-
         if (channel) {
-          const startEmbed = {
-            color: 0x4caf50,
-            title: "GRP Bot ist online!",
-            description:
-              "Der Bot und das Web-Portal sind jetzt aktiv und einsatzbereit.",
-            fields: [
-              { name: "🤖 Bot-Status", value: "Online", inline: true },
+          await (channel as any).send({
+            embeds: [
               {
-                name: "🎮 Aktivität",
-                value: "Wechselt automatisch",
-                inline: true,
-              },
-              {
-                name: "📋 Befehle",
-                value: "Nutze `/hilfe` um alle Befehle zu sehen",
-                inline: false,
+                color: 0x4caf50,
+                title: "Minecraft Bot is online!",
+                description: "The system is now ready.",
+                timestamp: new Date().toISOString(),
               },
             ],
-            footer: { text: "GRP" },
-            timestamp: new Date().toISOString(),
-          };
-
-          await (channel as any).send({ embeds: [startEmbed] });
+          });
         }
       });
     } catch (error) {
-      console.error("❌ Fehler beim Senden der Startnachricht:", error);
+      console.error("❌ Startup Error:", error);
     }
   }
 
+  // --- DASHBOARD & SEND MESSAGE SYSTEM ---
+
   getUptime(): string {
     const seconds = Math.floor((Date.now() - this.startTime) / 1000);
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-
-    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return `${d}d ${h}h ${m}m`;
   }
 
   getStatus() {
     return {
       online: this.ready,
       uptime: Math.floor((Date.now() - this.startTime) / 1000),
-      version: "1.0.0",
+      version: "23.5.1",
       serverCount: this.client?.guilds.cache.size || 0,
-      status: "Wechselt automatisch",
+      status: "Switches automatically",
       startTime: this.startTime,
     };
   }
@@ -518,28 +456,72 @@ export class DiscordBot {
     }));
   }
 
-  async sendMessage(channelId: string, options: { content?: string, embed?: { title?: string, description?: string, color?: string } }) {
-    if (!this.client) throw new Error("Bot ist nicht initialisiert");
+  async sendMessage(
+    channelId: string,
+    options: {
+      content?: string;
+      embed?: { title?: string; description?: string; color?: string };
+    },
+  ) {
+    if (!this.client) throw new Error("Bot is not initialized.");
 
     const channel = await this.client.channels.fetch(channelId);
     if (!channel || !("send" in channel)) {
-      throw new Error(
-        "Kanal nicht gefunden oder kann keine Nachrichten empfangen",
-      );
+      throw new Error("Channel not found or no permission to send.");
     }
 
     const sendOptions: any = {};
     if (options.content) sendOptions.content = options.content;
     if (options.embed) {
-      sendOptions.embeds = [{
-        title: options.embed.title,
-        description: options.embed.description,
-        color: options.embed.color ? parseInt(options.embed.color.replace("#", ""), 16) : 0xd32f2f,
-        timestamp: new Date().toISOString(),
-      }];
+      sendOptions.embeds = [
+        {
+          title: options.embed.title,
+          description: options.embed.description,
+          color: options.embed.color
+            ? parseInt(options.embed.color.replace("#", ""), 16)
+            : 0xd32f2f,
+          timestamp: new Date().toISOString(),
+        },
+      ];
     }
 
     await (channel as any).send(sendOptions);
+  }
+
+  // NEW: Direct Message functionality
+  async sendDirectMessage(
+    userId: string,
+    options: {
+      content?: string;
+      embed?: { title?: string; description?: string; color?: string };
+    },
+  ) {
+    if (!this.client) throw new Error("Bot is not initialized.");
+
+    try {
+      const user = await this.client.users.fetch(userId);
+      const sendOptions: any = {};
+
+      if (options.content) sendOptions.content = options.content;
+      if (options.embed) {
+        sendOptions.embeds = [
+          {
+            title: options.embed.title,
+            description: options.embed.description,
+            color: options.embed.color
+              ? parseInt(options.embed.color.replace("#", ""), 16)
+              : 0x1976d2,
+            timestamp: new Date().toISOString(),
+          },
+        ];
+      }
+
+      await user.send(sendOptions);
+      return { success: true };
+    } catch (error) {
+      console.error("❌ Error sending DM:", error);
+      throw new Error("Could not send DM (User might have DMs disabled).");
+    }
   }
 
   isReady(): boolean {

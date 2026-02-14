@@ -29,23 +29,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // NEU: Nachricht als DM an einen User senden
+  app.post("/api/discord/send-dm", async (req, res) => {
+    try {
+      const { userId, content, embed } = req.body;
+
+      if (!userId || !content) {
+        return res
+          .status(400)
+          .json({ message: "User-ID und Nachrichtentext fehlen" });
+      }
+
+      if (!discordBot.isReady()) {
+        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+      }
+
+      await discordBot.sendDirectMessage(userId, { content, embed });
+      res.json({ success: true, message: "DM erfolgreich gesendet" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Nachricht an Discord-Kanal senden
   app.post("/api/discord/send-message", async (req, res) => {
     try {
       const validated = sendMessageSchema.parse(req.body);
-      
+
       if (!discordBot.isReady()) {
         return res.status(503).json({ message: "Bot ist noch nicht bereit" });
       }
 
       await discordBot.sendMessage(validated.channelId, {
         content: validated.content,
-        embed: validated.embed
+        embed: validated.embed,
       });
       res.json({ success: true, message: "Nachricht erfolgreich gesendet" });
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Ungültige Daten", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Ungültige Daten", errors: error.errors });
       }
       res.status(500).json({ message: error.message });
     }
@@ -61,7 +85,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Neue Bewerbung erstellen (von Discord)
+  // Neue Bewerbung erstellen
   app.post("/api/applications", async (req, res) => {
     try {
       const validated = insertApplicationSchema.parse(req.body);
@@ -69,7 +93,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(application);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Ungültige Daten", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Ungültige Daten", errors: error.errors });
       }
       res.status(500).json({ message: error.message });
     }
@@ -81,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { status } = req.body;
 
-      if (!status || typeof status !== 'string') {
+      if (!status || typeof status !== "string") {
         return res.status(400).json({ message: "Status ist erforderlich" });
       }
 
@@ -97,6 +123,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
-
   return httpServer;
 }
