@@ -33,16 +33,17 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <SidebarProvider style={style as React.CSSProperties}>
-          <div className="flex h-screen w-full">
+          <div className="flex h-screen w-full overflow-hidden">
             <AppSidebar />
-            <div className="flex flex-col flex-1 overflow-hidden">
-              <header className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
+            <div className="flex flex-col flex-1 min-w-0">
+              <header className="flex items-center justify-between p-4 border-b border-border flex-shrink-0 bg-background/95 backdrop-blur">
                 <SidebarTrigger data-testid="button-sidebar-toggle" />
                 <h1 className="text-sm font-medium text-muted-foreground">
                   Minecraft Bot Portal
                 </h1>
               </header>
-              <main className="flex-1 overflow-hidden">
+              {/* ÄNDERUNG HIER: overflow-y-auto erlaubt das Scrollen im Hauptfenster */}
+              <main className="flex-1 overflow-y-auto p-4 md:p-6">
                 <Router />
               </main>
             </div>

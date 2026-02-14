@@ -1,3 +1,4 @@
+import { useState } from "react"; // NEU: Für die Eingabe-Verwaltung
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Card,
@@ -7,29 +8,43 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Server, FileText, Clock, Volume2, Loader2 } from "lucide-react";
+import {
+  Activity,
+  Server,
+  FileText,
+  Clock,
+  Volume2,
+  Loader2,
+  Hash,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input"; // NEU: Input Komponente
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { BotStatus } from "@shared/schema";
 
 export default function Dashboard() {
   const { toast } = useToast();
+
+  // NEU: State für die manuell eingegebene Channel ID
+  const [targetChannelId, setTargetChannelId] = useState("1471577369440686429");
+
   const { data: botStatus, isLoading } = useQuery<BotStatus>({
     queryKey: ["/api/bot/status"],
   });
 
   const joinVoiceMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (channelId: string) => {
+      // ÄNDERUNG: channelId als Parameter
       const res = await apiRequest("POST", "/api/discord/voice/join", {
-        channelId: "1471577369440686429",
+        channelId: channelId,
       });
       return res.json();
     },
     onSuccess: () => {
       toast({
         title: "Erfolg",
-        description: "Bot ist dem Sprachkanal beigetreten.",
+        description: `Bot ist dem Sprachkanal ${targetChannelId} beigetreten.`,
       });
     },
     onError: (error: Error) => {
@@ -67,6 +82,7 @@ export default function Dashboard() {
         ) : (
           <>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              {/* Stat-Cards bleiben gleich ... */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Status</CardTitle>
@@ -136,22 +152,34 @@ export default function Dashboard() {
                 <CardHeader>
                   <CardTitle>Sprachchat Steuerung</CardTitle>
                   <CardDescription>
-                    Bot mit dem vordefinierten Sprachkanal verbinden
+                    Gib eine Channel ID ein, um den Bot zu verbinden
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                  {/* NEU: Input-Bereich */}
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Voice Channel ID"
+                        value={targetChannelId}
+                        onChange={(e) => setTargetChannelId(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+
                   <Button
-                    onClick={() => joinVoiceMutation.mutate()}
-                    disabled={joinVoiceMutation.isPending}
+                    onClick={() => joinVoiceMutation.mutate(targetChannelId)}
+                    disabled={joinVoiceMutation.isPending || !targetChannelId}
                     className="w-full gap-2"
-                    data-testid="button-join-voice"
                   >
                     {joinVoiceMutation.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Volume2 className="w-4 h-4" />
                     )}
-                    Sprachkanal beitreten (1471577369440686429)
+                    Sprachkanal beitreten
                   </Button>
                 </CardContent>
               </Card>
