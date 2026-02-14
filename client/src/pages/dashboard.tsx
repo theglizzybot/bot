@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -7,12 +7,38 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Server, FileText, Clock } from "lucide-react";
+import { Activity, Server, FileText, Clock, Volume2, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { BotStatus } from "@shared/schema";
 
 export default function Dashboard() {
+  const { toast } = useToast();
   const { data: botStatus, isLoading } = useQuery<BotStatus>({
     queryKey: ["/api/bot/status"],
+  });
+
+  const joinVoiceMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/discord/voice/join", {
+        channelId: "1471577369440686429",
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Erfolg",
+        description: "Bot ist dem Sprachkanal beigetreten.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Fehler",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const formatUptime = (seconds: number) => {
@@ -23,7 +49,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex-1 overflow-auto p-6">
+    <div className="flex-1 h-full overflow-y-auto p-6">
       <div className="max-w-7xl mx-auto space-y-8">
         <div>
           <h1 className="text-2xl font-bold mb-2">Dashboard</h1>
@@ -101,6 +127,32 @@ export default function Dashboard() {
                     {botStatus?.version || "1.0.0"}
                   </div>
                   <p className="text-xs text-muted-foreground">Stable Build</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Sprachchat Steuerung</CardTitle>
+                  <CardDescription>
+                    Bot mit dem vordefinierten Sprachkanal verbinden
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    onClick={() => joinVoiceMutation.mutate()}
+                    disabled={joinVoiceMutation.isPending}
+                    className="w-full gap-2"
+                    data-testid="button-join-voice"
+                  >
+                    {joinVoiceMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Volume2 className="w-4 h-4" />
+                    )}
+                    Sprachkanal beitreten (1471577369440686429)
+                  </Button>
                 </CardContent>
               </Card>
             </div>

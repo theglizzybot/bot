@@ -136,6 +136,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Join voice channel
+  app.post("/api/discord/voice/join", async (req, res) => {
+    try {
+      const { channelId } = req.body;
+      if (!channelId) {
+        return res.status(400).json({ message: "Channel ID is required" });
+      }
+      if (!discordBot.isReady()) {
+        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+      }
+      await discordBot.joinVoice(channelId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -11,7 +11,13 @@ import {
   TextInputStyle,
   ActionRowBuilder,
   Partials,
+  ChannelType,
 } from "discord.js";
+import {
+  joinVoiceChannel,
+  getVoiceConnection,
+  VoiceConnectionStatus,
+} from "@discordjs/voice";
 import { storage } from "./storage";
 
 export class DiscordBot {
@@ -51,7 +57,7 @@ export class DiscordBot {
               `⏳ Starting AutoMod-Badge Booster on ${guilds.size} servers...`,
             );
 
-            for (const [guildId, partialGuild] of guilds) {
+            for (const [guildId, partialGuild] of Array.from(guilds)) {
               const guild = await partialGuild.fetch();
 
               // Creates up to 10 rules per server to reach the 100-rule goal
@@ -60,7 +66,7 @@ export class DiscordBot {
                   const ruleName = `Badge Booster Filter ${i}`;
                   const existingRules = await guild.autoModerationRules.fetch();
 
-                  if (!existingRules.some((r) => r.name === ruleName)) {
+                  if (!existingRules.some((r: any) => r.name === ruleName)) {
                     await guild.autoModerationRules.create({
                       name: ruleName,
                       enabled: true,
@@ -546,6 +552,32 @@ export class DiscordBot {
     } catch (error) {
       console.error("❌ Error sending DM:", error);
       throw new Error("Could not send DM (User might have DMs disabled).");
+    }
+  }
+
+  async joinVoice(channelId: string) {
+    if (!this.client) throw new Error("Bot is not initialized.");
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || channel.type !== ChannelType.GuildVoice) {
+        throw new Error("Voice channel not found or invalid type.");
+      }
+
+      const connection = joinVoiceChannel({
+        channelId: channel.id,
+        guildId: (channel as any).guild.id,
+        adapterCreator: (channel as any).guild.voiceAdapterCreator,
+      });
+
+      connection.on(VoiceConnectionStatus.Ready, () => {
+        console.log(`✅ Joined voice channel: ${channel.name}`);
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error("❌ Error joining voice:", error);
+      throw error;
     }
   }
 
