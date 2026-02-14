@@ -122,6 +122,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Neue Einladung für einen Server erstellen
+  app.post("/api/discord/servers/:id/invite", async (req, res) => {
+    try {
+      const { id } = req.params;
+      if (!discordBot.isReady()) {
+        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+      }
+      const inviteUrl = await discordBot.createInvite(id);
+      res.json({ inviteUrl });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

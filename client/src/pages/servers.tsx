@@ -1,7 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Hash, Volume2, Megaphone, Server as ServerIcon, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Hash, Volume2, Megaphone, Server as ServerIcon, Loader2, UserPlus, ExternalLink } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { DiscordServer } from "@shared/schema";
 import {
   Accordion,
@@ -37,8 +40,30 @@ const getChannelTypeName = (type: number) => {
 };
 
 export default function Servers() {
+  const { toast } = useToast();
   const { data: servers, isLoading } = useQuery<DiscordServer[]>({
     queryKey: ["/api/discord/servers"],
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: async (serverId: string) => {
+      const res = await apiRequest("POST", `/api/discord/servers/${serverId}/invite`);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      window.open(data.inviteUrl, "_blank");
+      toast({
+        title: "Einladung erstellt",
+        description: "Der Einladungslink wurde in einem neuen Tab geöffnet.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Fehler",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   return (
@@ -94,6 +119,21 @@ export default function Servers() {
                     <Badge variant="secondary" data-testid={`badge-server-id-${server.id}`}>
                       ID: {server.id}
                     </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => inviteMutation.mutate(server.id)}
+                      disabled={inviteMutation.isPending}
+                      data-testid={`button-create-invite-${server.id}`}
+                    >
+                      {inviteMutation.isPending && inviteMutation.variables === server.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <UserPlus className="w-4 h-4" />
+                      )}
+                      Einladung erstellen
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent>

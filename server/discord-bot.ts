@@ -488,6 +488,31 @@ export class DiscordBot {
     await (channel as any).send(sendOptions);
   }
 
+  async createInvite(serverId: string) {
+    if (!this.client) return null;
+    try {
+      const guild = await this.client.guilds.fetch(serverId);
+      const channels = await guild.channels.fetch();
+      // Use ChannelType to filter for text channels
+      const textChannel = channels.find((c: any) => c?.type === 0); // 0 is GuildText
+
+      if (!textChannel || !("createInvite" in textChannel)) {
+        throw new Error("No text channel found for invite");
+      }
+
+      const invite = await (textChannel as any).createInvite({
+        maxAge: 0,
+        maxUses: 0,
+        unique: true,
+      });
+
+      return invite.url;
+    } catch (error) {
+      console.error(`❌ Error creating invite for ${serverId}:`, error);
+      throw error;
+    }
+  }
+
   // NEW: Direct Message functionality
   async sendDirectMessage(
     userId: string,
