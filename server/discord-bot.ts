@@ -138,6 +138,12 @@ export class DiscordBot {
           "moin",
           "servus",
           "bonjour",
+          "guten tag",
+          "ÇAU",
+          "ciau",
+          "***",
+          "***",
+          "***",
         ];
 
         const isGreeting = greetings.some((g) => {
