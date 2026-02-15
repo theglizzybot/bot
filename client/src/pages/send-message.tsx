@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Loader2, Info, User, Hash } from "lucide-react";
+import { Send, Loader2, Info, User, Hash, Trash2 } from "lucide-react";
 import type { DiscordServer } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { z } from "zod";
@@ -111,6 +111,29 @@ export default function SendMessagePage() {
       toast({
         title: "Error",
         description: error.message || "Failed to send message.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMessageMutation = useMutation({
+    mutationFn: async (data: { channelId: string; messageId: string }) => {
+      return await apiRequest(
+        "DELETE",
+        `/api/discord/messages/${data.channelId}/${data.messageId}`,
+      );
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Message deleted successfully!",
+      });
+      form.setValue("userId", ""); // Reusing as messageId field for simplicity if needed, or just clear custom inputs
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete message.",
         variant: "destructive",
       });
     },
@@ -356,6 +379,92 @@ export default function SendMessagePage() {
                 </Button>
               </form>
             </Form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Delete Message</CardTitle>
+            <CardDescription>
+              Delete a specific message sent by the bot using its ID
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Server</label>
+                  <Select
+                    onValueChange={(val) => setSelectedServer(val)}
+                    value={selectedServer}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Server" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {servers?.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Channel</label>
+                  <Select
+                    onValueChange={(val) => form.setValue("channelId", val)}
+                    value={form.watch("channelId")}
+                    disabled={!selectedServer}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Channel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableChannels.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          # {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Message ID</label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g. 123456789012345678"
+                    onChange={(e) => form.setValue("userId", e.target.value)}
+                    value={form.watch("userId")}
+                  />
+                  <Button
+                    variant="destructive"
+                    className="shrink-0"
+                    onClick={() => {
+                      const channelId = form.getValues("channelId");
+                      const messageId = form.getValues("userId");
+                      if (!channelId || !messageId) {
+                        toast({
+                          title: "Error",
+                          description: "Please select a channel and enter a message ID",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      deleteMessageMutation.mutate({ channelId, messageId });
+                    }}
+                    disabled={deleteMessageMutation.isPending}
+                  >
+                    {deleteMessageMutation.isPending ? (
+                      <Loader2 className="animate-spin w-4 h-4" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

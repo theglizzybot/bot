@@ -581,6 +581,28 @@ export class DiscordBot {
     }
   }
 
+  async deleteMessage(channelId: string, messageId: string) {
+    if (!this.client) throw new Error("Bot is not initialized.");
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !("messages" in channel)) {
+        throw new Error("Channel not found or does not support messages.");
+      }
+
+      const message = await (channel as any).messages.fetch(messageId);
+      if (!message) {
+        throw new Error("Message not found.");
+      }
+
+      await message.delete();
+      return { success: true };
+    } catch (error: any) {
+      console.error("❌ Error deleting message:", error);
+      throw new Error(error.message || "Could not delete message.");
+    }
+  }
+
   isReady(): boolean {
     return this.ready;
   }

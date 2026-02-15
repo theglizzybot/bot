@@ -136,6 +136,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete message
+  app.delete("/api/discord/messages/:channelId/:messageId", async (req, res) => {
+    try {
+      const { channelId, messageId } = req.params;
+      if (!discordBot.isReady()) {
+        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+      }
+      await discordBot.deleteMessage(channelId, messageId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Join voice channel
   app.post("/api/discord/voice/join", async (req, res) => {
     try {
