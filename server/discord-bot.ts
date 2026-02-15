@@ -137,7 +137,7 @@ export class DiscordBot {
         }
 
         const content = message.content.toLowerCase().trim();
-        const greetings = ["hi", "hallo", "hello", "hey", "moin", "servus"];
+        const greetings = ["hi", "hallo", "hello", "hey", "moin", "servus", "Bonjour", ""];
 
         const isGreeting = greetings.some((g) => {
           const regex = new RegExp(`^${g}\\b`, "i");
