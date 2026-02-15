@@ -63,6 +63,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await discordBot.sendMessage(validated.channelId, {
         content: validated.content,
         embed: validated.embed,
+        replyTo: req.body.replyTo,
       });
       res.json({ success: true, message: "Nachricht erfolgreich gesendet" });
     } catch (error: any) {

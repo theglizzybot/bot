@@ -467,6 +467,7 @@ export class DiscordBot {
     options: {
       content?: string;
       embed?: { title?: string; description?: string; color?: string };
+      replyTo?: string;
     },
   ) {
     if (!this.client) throw new Error("Bot is not initialized.");
@@ -478,6 +479,12 @@ export class DiscordBot {
 
     const sendOptions: any = {};
     if (options.content) sendOptions.content = options.content;
+    if (options.replyTo) {
+      sendOptions.reply = {
+        messageReference: options.replyTo,
+        failIfNotExists: false,
+      };
+    }
     if (options.embed) {
       sendOptions.embeds = [
         {

@@ -40,6 +40,7 @@ const formSchema = z.object({
   serverId: z.string().optional(),
   channelId: z.string().optional(),
   userId: z.string().optional(),
+  replyTo: z.string().optional(),
   content: z.string().max(2000, "Message is too long").optional(),
   useEmbed: z.boolean().default(false),
   embedTitle: z.string().optional(),
@@ -66,6 +67,7 @@ export default function SendMessagePage() {
       serverId: "",
       channelId: "",
       userId: "",
+      replyTo: "",
       content: "",
       useEmbed: false,
       embedTitle: "",
@@ -84,6 +86,7 @@ export default function SendMessagePage() {
           : "/api/discord/send-message";
       const payload: any = {
         content: data.content,
+        replyTo: data.replyTo,
         ...(data.type === "dm"
           ? { userId: data.userId }
           : { channelId: data.channelId }),
@@ -207,64 +210,84 @@ export default function SendMessagePage() {
                 />
 
                 {messageType === "channel" ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="serverId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Server</FormLabel>
+                            <Select
+                              onValueChange={(val) => {
+                                field.onChange(val);
+                                setSelectedServer(val);
+                                form.setValue("channelId", "");
+                              }}
+                              disabled={serversLoading}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select Server" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {servers?.map((s) => (
+                                  <SelectItem key={s.id} value={s.id}>
+                                    {s.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="channelId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Channel</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              disabled={!selectedServer}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select Channel" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {availableChannels.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    # {c.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                     <FormField
                       control={form.control}
-                      name="serverId"
+                      name="replyTo"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Server</FormLabel>
-                          <Select
-                            onValueChange={(val) => {
-                              field.onChange(val);
-                              setSelectedServer(val);
-                              form.setValue("channelId", "");
-                            }}
-                            disabled={serversLoading}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select Server" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {servers?.map((s) => (
-                                <SelectItem key={s.id} value={s.id}>
-                                  {s.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormLabel>Reply to Message ID (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g. 123456789012345678"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            If provided, the bot will reply to this message.
+                          </FormDescription>
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="channelId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Channel</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            disabled={!selectedServer}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select Channel" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {availableChannels.map((c) => (
-                                <SelectItem key={c.id} value={c.id}>
-                                  # {c.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  </>
                 ) : (
                   <FormField
                     control={form.control}
