@@ -1,4 +1,4 @@
-import { useState } from "react"; // NEU: Für die Eingabe-Verwaltung
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Card,
@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Activity,
   Server,
@@ -16,9 +15,11 @@ import {
   Volume2,
   Loader2,
   Hash,
+  SmilePlus,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input"; // NEU: Input Komponente
+import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { BotStatus } from "@shared/schema";
@@ -26,16 +27,23 @@ import type { BotStatus } from "@shared/schema";
 export default function Dashboard() {
   const { toast } = useToast();
 
-  // NEU: State für die manuell eingegebene Channel ID
+  // States für Voice
   const [targetChannelId, setTargetChannelId] = useState("1471577369440686429");
+
+  // NEU: States für Reaktionen
+  const [reactChannelId, setReactChannelId] = useState("");
+  const [reactMessageId, setReactMessageId] = useState("");
+  const [reactEmoji, setReactEmoji] = useState(
+    "<:music_disc:1471990618828837139>",
+  );
 
   const { data: botStatus, isLoading } = useQuery<BotStatus>({
     queryKey: ["/api/bot/status"],
   });
 
+  // Mutation für Voice Join
   const joinVoiceMutation = useMutation({
     mutationFn: async (channelId: string) => {
-      // ÄNDERUNG: channelId als Parameter
       const res = await apiRequest("POST", "/api/discord/voice/join", {
         channelId: channelId,
       });
@@ -44,7 +52,32 @@ export default function Dashboard() {
     onSuccess: () => {
       toast({
         title: "Erfolg",
-        description: `Bot ist dem Sprachkanal ${targetChannelId} beigetreten.`,
+        description: `Bot ist dem Sprachkanal beigetreten.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Fehler",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // NEU: Mutation für Reaktionen
+  const addReactionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/discord/messages/react", {
+        channelId: reactChannelId,
+        messageId: reactMessageId,
+        emoji: reactEmoji,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Reaktion gesendet",
+        description: "Das Emoji wurde erfolgreich zur Nachricht hinzugefügt.",
       });
     },
     onError: (error: Error) => {
@@ -82,7 +115,6 @@ export default function Dashboard() {
         ) : (
           <>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              {/* Stat-Cards bleiben gleich ... */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Status</CardTitle>
@@ -148,6 +180,7 @@ export default function Dashboard() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
+              {/* Sprachchat Steuerung */}
               <Card>
                 <CardHeader>
                   <CardTitle>Sprachchat Steuerung</CardTitle>
@@ -156,19 +189,15 @@ export default function Dashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* NEU: Input-Bereich */}
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Voice Channel ID"
-                        value={targetChannelId}
-                        onChange={(e) => setTargetChannelId(e.target.value)}
-                        className="pl-9"
-                      />
-                    </div>
+                  <div className="relative flex-1">
+                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Voice Channel ID"
+                      value={targetChannelId}
+                      onChange={(e) => setTargetChannelId(e.target.value)}
+                      className="pl-9"
+                    />
                   </div>
-
                   <Button
                     onClick={() => joinVoiceMutation.mutate(targetChannelId)}
                     disabled={joinVoiceMutation.isPending || !targetChannelId}
@@ -180,6 +209,63 @@ export default function Dashboard() {
                       <Volume2 className="w-4 h-4" />
                     )}
                     Sprachkanal beitreten
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* NEU: Reaktions-Steuerung */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Reaktions-Steuerung</CardTitle>
+                  <CardDescription>
+                    Lasse den Bot auf eine bestimmte Nachricht reagieren
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4">
+                    <div className="relative">
+                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Channel ID"
+                        value={reactChannelId}
+                        onChange={(e) => setReactChannelId(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                    <div className="relative">
+                      <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Message ID"
+                        value={reactMessageId}
+                        onChange={(e) => setReactMessageId(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                    <div className="relative">
+                      <SmilePlus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Emoji (z.B. <:name:id>)"
+                        value={reactEmoji}
+                        onChange={(e) => setReactEmoji(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => addReactionMutation.mutate()}
+                    disabled={
+                      addReactionMutation.isPending ||
+                      !reactMessageId ||
+                      !reactChannelId
+                    }
+                    className="w-full gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {addReactionMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <SmilePlus className="w-4 h-4" />
+                    )}
+                    Emoji hinzufügen
                   </Button>
                 </CardContent>
               </Card>

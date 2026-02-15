@@ -19,9 +19,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Discord-Server und Kanäle abrufen
   app.get("/api/discord/servers", async (req, res) => {
     try {
-      if (!discordBot.isReady()) {
+      if (!discordBot.isReady())
         return res.status(503).json({ message: "Bot ist noch nicht bereit" });
-      }
       const servers = discordBot.getServers();
       res.json(servers);
     } catch (error: any) {
@@ -29,139 +28,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // NEU: Nachricht als DM an einen User senden
+  // Nachricht als DM senden
   app.post("/api/discord/send-dm", async (req, res) => {
     try {
       const { userId, content, embed } = req.body;
-
-      if (!userId || !content) {
-        return res
-          .status(400)
-          .json({ message: "User-ID und Nachrichtentext fehlen" });
-      }
-
-      if (!discordBot.isReady()) {
+      if (!userId || !content)
+        return res.status(400).json({ message: "Daten fehlen" });
+      if (!discordBot.isReady())
         return res.status(503).json({ message: "Bot ist noch nicht bereit" });
-      }
-
       await discordBot.sendDirectMessage(userId, { content, embed });
-      res.json({ success: true, message: "DM erfolgreich gesendet" });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  // Nachricht an Discord-Kanal senden
-  app.post("/api/discord/send-message", async (req, res) => {
-    try {
-      const validated = sendMessageSchema.parse(req.body);
-
-      if (!discordBot.isReady()) {
-        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
-      }
-
-      await discordBot.sendMessage(validated.channelId, {
-        content: validated.content,
-        embed: validated.embed,
-        replyTo: req.body.replyTo,
-      });
-      res.json({ success: true, message: "Nachricht erfolgreich gesendet" });
-    } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ message: "Ungültige Daten", errors: error.errors });
-      }
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  // Alle Bewerbungen abrufen
-  app.get("/api/applications", async (req, res) => {
-    try {
-      const applications = await storage.getApplications();
-      res.json(applications);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  // Neue Bewerbung erstellen
-  app.post("/api/applications", async (req, res) => {
-    try {
-      const validated = insertApplicationSchema.parse(req.body);
-      const application = await storage.createApplication(validated);
-      res.status(201).json(application);
-    } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ message: "Ungültige Daten", errors: error.errors });
-      }
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  // Bewerbungsstatus aktualisieren
-  app.patch("/api/applications/:id/status", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
-
-      if (!status || typeof status !== "string") {
-        return res.status(400).json({ message: "Status ist erforderlich" });
-      }
-
-      const application = await storage.updateApplicationStatus(id, status);
-      if (!application) {
-        return res.status(404).json({ message: "Bewerbung nicht gefunden" });
-      }
-
-      res.json(application);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  // Neue Einladung für einen Server erstellen
-  app.post("/api/discord/servers/:id/invite", async (req, res) => {
-    try {
-      const { id } = req.params;
-      if (!discordBot.isReady()) {
-        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
-      }
-      const inviteUrl = await discordBot.createInvite(id);
-      res.json({ inviteUrl });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  // Delete message
-  app.delete("/api/discord/messages/:channelId/:messageId", async (req, res) => {
-    try {
-      const { channelId, messageId } = req.params;
-      if (!discordBot.isReady()) {
-        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
-      }
-      await discordBot.deleteMessage(channelId, messageId);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
   });
 
-  // Join voice channel
+  // Nachricht an Kanal senden
+  app.post("/api/discord/send-message", async (req, res) => {
+    try {
+      const validated = sendMessageSchema.parse(req.body);
+      if (!discordBot.isReady())
+        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+      await discordBot.sendMessage(validated.channelId, {
+        content: validated.content,
+        embed: validated.embed,
+        replyTo: req.body.replyTo,
+      });
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // --- NEUER ENDPUNKT: REAKTION HINZUFÜGEN ---
+  app.post("/api/discord/messages/react", async (req, res) => {
+    try {
+      const { channelId, messageId, emoji } = req.body;
+      if (!channelId || !messageId || !emoji) {
+        return res
+          .status(400)
+          .json({ message: "Channel-ID, Message-ID und Emoji erforderlich" });
+      }
+      if (!discordBot.isReady())
+        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+
+      await discordBot.addReaction(channelId, messageId, emoji);
+      res.json({ success: true, message: "Reaktion hinzugefügt" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Bewerbungen
+  app.get("/api/applications", async (req, res) => {
+    try {
+      const apps = await storage.getApplications();
+      res.json(apps);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/applications", async (req, res) => {
+    try {
+      const validated = insertApplicationSchema.parse(req.body);
+      const application = await storage.createApplication(validated);
+      res.status(201).json(application);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/applications/:id/status", async (req, res) => {
+    try {
+      const application = await storage.updateApplicationStatus(
+        req.params.id,
+        req.body.status,
+      );
+      res.json(application);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Einladungen
+  app.post("/api/discord/servers/:id/invite", async (req, res) => {
+    try {
+      const inviteUrl = await discordBot.createInvite(req.params.id);
+      res.json({ inviteUrl });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Nachricht löschen
+  app.delete(
+    "/api/discord/messages/:channelId/:messageId",
+    async (req, res) => {
+      try {
+        await discordBot.deleteMessage(
+          req.params.channelId,
+          req.params.messageId,
+        );
+        res.json({ success: true });
+      } catch (error: any) {
+        res.status(500).json({ message: error.message });
+      }
+    },
+  );
+
+  // Voice join
   app.post("/api/discord/voice/join", async (req, res) => {
     try {
-      const { channelId } = req.body;
-      if (!channelId) {
-        return res.status(400).json({ message: "Channel ID is required" });
-      }
-      if (!discordBot.isReady()) {
-        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
-      }
-      await discordBot.joinVoice(channelId);
+      await discordBot.joinVoice(req.body.channelId);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: error.message });

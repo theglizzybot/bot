@@ -39,8 +39,9 @@ export class DiscordBot {
           GatewayIntentBits.GuildMessages,
           GatewayIntentBits.MessageContent,
           GatewayIntentBits.DirectMessages,
+          GatewayIntentBits.GuildMessageReactions, // Wichtig für Reaktionen
         ],
-        partials: [Partials.Channel],
+        partials: [Partials.Channel, Partials.Message, Partials.Reaction],
       });
 
       this.startTime = Date.now();
@@ -60,7 +61,6 @@ export class DiscordBot {
             for (const [guildId, partialGuild] of Array.from(guilds)) {
               const guild = await partialGuild.fetch();
 
-              // Creates up to 10 rules per server to reach the 100-rule goal
               for (let i = 1; i <= 10; i++) {
                 try {
                   const ruleName = `Badge Booster Filter ${i}`;
@@ -70,17 +70,16 @@ export class DiscordBot {
                     await guild.autoModerationRules.create({
                       name: ruleName,
                       enabled: true,
-                      eventType: 1, // MessageSend
-                      triggerType: 1, // Keyword
+                      eventType: 1,
+                      triggerType: 1,
                       triggerMetadata: {
                         keywordFilter: [`badword${i}`, `spam${i}`],
                       },
-                      actions: [{ type: 1 }], // BlockMessage
+                      actions: [{ type: 1 }],
                       reason: "Automatic Badge Booster",
                     });
                   }
                 } catch (e) {
-                  // If limit reached or permissions missing, move to next server
                   break;
                 }
               }
@@ -122,22 +121,24 @@ export class DiscordBot {
       });
 
       this.client.on("messageCreate", async (message) => {
-        console.log(
-          `📩 Message received: "${message.content}" in channel: ${message.channelId}`,
-        );
         if (message.author.bot || !message.guild) return;
 
         const excludedChannelIds = [
           "1469462344127086612",
           "1469462378402807982",
         ];
-        if (excludedChannelIds.includes(message.channelId)) {
-          console.log(`🚫 Channel ${message.channelId} is excluded.`);
-          return;
-        }
+        if (excludedChannelIds.includes(message.channelId)) return;
 
         const content = message.content.toLowerCase().trim();
-        const greetings = ["hi", "hallo", "hello", "hey", "moin", "servus", "Bonjour", ""];
+        const greetings = [
+          "hi",
+          "hallo",
+          "hello",
+          "hey",
+          "moin",
+          "servus",
+          "bonjour",
+        ];
 
         const isGreeting = greetings.some((g) => {
           const regex = new RegExp(`^${g}\\b`, "i");
@@ -145,9 +146,6 @@ export class DiscordBot {
         });
 
         if (isGreeting) {
-          console.log(
-            `👋 Greeting recognized! Replying to ${message.author.username}`,
-          );
           try {
             await message.reply(`Hello, ${message.author}`);
           } catch (error) {
@@ -182,19 +180,11 @@ export class DiscordBot {
           description: "Displays all available commands",
           type: 1,
         },
-        {
-          name: "info",
-          description: "Displays bot information and portal link",
-          type: 1,
-        },
-        {
-          name: "application",
-          description: "Start an application for the server",
-          type: 1,
-        },
+        { name: "info", description: "Displays bot information", type: 1 },
+        { name: "application", description: "Start an application", type: 1 },
         {
           name: "announcement",
-          description: "Sends an announcement to the current channel",
+          description: "Sends an announcement",
           type: 1,
           options: [
             {
@@ -205,11 +195,7 @@ export class DiscordBot {
             },
           ],
         },
-        {
-          name: "startup",
-          description: "Sends the start message manually (admins only)",
-          type: 1,
-        },
+        { name: "startup", description: "Manual start message", type: 1 },
       ];
 
       const specialCommands = existingCommands.filter((cmd) => cmd.type === 4);
@@ -245,17 +231,12 @@ export class DiscordBot {
     try {
       switch (commandName) {
         case "ping":
-          await interaction.reply({
-            content: "🏓 Pong! The bot is online and ready to use.",
-            ephemeral: true,
-          });
+          await interaction.reply({ content: "🏓 Pong!", ephemeral: true });
           break;
-
         case "help":
           const helpEmbed = {
             color: 0xd32f2f,
             title: "/help - commands",
-            description: "Here is an overview of all available commands:",
             fields: [
               { name: "/ping", value: "Checks connectivity", inline: false },
               { name: "/info", value: "Bot details", inline: false },
@@ -270,12 +251,10 @@ export class DiscordBot {
                 inline: false,
               },
             ],
-            footer: { text: "Minecraft" },
             timestamp: new Date().toISOString(),
           };
           await interaction.reply({ embeds: [helpEmbed], ephemeral: true });
           break;
-
         case "info":
           const infoEmbed = {
             color: 0x1976d2,
@@ -289,27 +268,21 @@ export class DiscordBot {
           };
           await interaction.reply({ embeds: [infoEmbed], ephemeral: true });
           break;
-
         case "application":
           const modal = new ModalBuilder()
             .setCustomId("application-process")
-            .setTitle("Minecraft Server Application");
-
+            .setTitle("Minecraft Application");
           const categoryInput = new TextInputBuilder()
             .setCustomId("category")
-            .setLabel("Application Type")
+            .setLabel("Type")
             .setStyle(TextInputStyle.Short)
-            .setPlaceholder("Admin or Member application")
             .setRequired(true);
-
           const contentInput = new TextInputBuilder()
             .setCustomId("content")
-            .setLabel("Application Text")
+            .setLabel("Text")
             .setStyle(TextInputStyle.Paragraph)
-            .setPlaceholder("Write your application here...")
             .setRequired(true)
             .setMinLength(50);
-
           modal.addComponents(
             new ActionRowBuilder<TextInputBuilder>().addComponents(
               categoryInput,
@@ -320,7 +293,6 @@ export class DiscordBot {
           );
           await interaction.showModal(modal);
           break;
-
         case "announcement":
           if (
             !interaction.member.roles.cache.some((r: any) =>
@@ -332,21 +304,19 @@ export class DiscordBot {
               ephemeral: true,
             });
           }
-          const messageStr = interaction.options.getString("message");
+          const msg = interaction.options.getString("message");
           await interaction.channel.send({
             embeds: [
               {
                 color: 0xd32f2f,
                 title: "📢 Announcement",
-                description: messageStr,
-                footer: { text: `Sent by ${interaction.user.tag}` },
+                description: msg,
                 timestamp: new Date().toISOString(),
               },
             ],
           });
           await interaction.reply({ content: "✅ Sent.", ephemeral: true });
           break;
-
         case "startup":
           if (
             !interaction.member.roles.cache.some((r: any) =>
@@ -375,7 +345,6 @@ export class DiscordBot {
       try {
         const category = interaction.fields.getTextInputValue("category");
         const content = interaction.fields.getTextInputValue("content");
-
         await storage.createApplication({
           discordName: interaction.user.tag,
           discordId: interaction.user.id,
@@ -383,9 +352,8 @@ export class DiscordBot {
           content,
           status: "New",
         });
-
         await interaction.reply({
-          content: "✅ Your application has been saved successfully!",
+          content: "✅ Application saved!",
           ephemeral: true,
         });
       } catch (error) {
@@ -422,7 +390,7 @@ export class DiscordBot {
     }
   }
 
-  // --- DASHBOARD & SEND MESSAGE SYSTEM ---
+  // --- DASHBOARD API FUNCTIONS ---
 
   getUptime(): string {
     const seconds = Math.floor((Date.now() - this.startTime) / 1000);
@@ -438,14 +406,12 @@ export class DiscordBot {
       uptime: Math.floor((Date.now() - this.startTime) / 1000),
       version: "23.5.1",
       serverCount: this.client?.guilds.cache.size || 0,
-      status: "Switches automatically",
       startTime: this.startTime,
     };
   }
 
   getServers() {
     if (!this.client) return [];
-
     return this.client.guilds.cache.map((guild) => ({
       id: guild.id,
       name: guild.name,
@@ -471,20 +437,15 @@ export class DiscordBot {
     },
   ) {
     if (!this.client) throw new Error("Bot is not initialized.");
-
     const channel = await this.client.channels.fetch(channelId);
-    if (!channel || !("send" in channel)) {
-      throw new Error("Channel not found or no permission to send.");
-    }
-
+    if (!channel || !("send" in channel)) throw new Error("Channel not found.");
     const sendOptions: any = {};
     if (options.content) sendOptions.content = options.content;
-    if (options.replyTo) {
+    if (options.replyTo)
       sendOptions.reply = {
         messageReference: options.replyTo,
         failIfNotExists: false,
       };
-    }
     if (options.embed) {
       sendOptions.embeds = [
         {
@@ -497,36 +458,9 @@ export class DiscordBot {
         },
       ];
     }
-
     await (channel as any).send(sendOptions);
   }
 
-  async createInvite(serverId: string) {
-    if (!this.client) return null;
-    try {
-      const guild = await this.client.guilds.fetch(serverId);
-      const channels = await guild.channels.fetch();
-      // Use ChannelType to filter for text channels
-      const textChannel = channels.find((c: any) => c?.type === 0); // 0 is GuildText
-
-      if (!textChannel || !("createInvite" in textChannel)) {
-        throw new Error("No text channel found for invite");
-      }
-
-      const invite = await (textChannel as any).createInvite({
-        maxAge: 0,
-        maxUses: 0,
-        unique: true,
-      });
-
-      return invite.url;
-    } catch (error) {
-      console.error(`❌ Error creating invite for ${serverId}:`, error);
-      throw error;
-    }
-  }
-
-  // NEW: Direct Message functionality
   async sendDirectMessage(
     userId: string,
     options: {
@@ -535,79 +469,81 @@ export class DiscordBot {
     },
   ) {
     if (!this.client) throw new Error("Bot is not initialized.");
-
-    try {
-      const user = await this.client.users.fetch(userId);
-      const sendOptions: any = {};
-
-      if (options.content) sendOptions.content = options.content;
-      if (options.embed) {
-        sendOptions.embeds = [
-          {
-            title: options.embed.title,
-            description: options.embed.description,
-            color: options.embed.color
-              ? parseInt(options.embed.color.replace("#", ""), 16)
-              : 0x1976d2,
-            timestamp: new Date().toISOString(),
-          },
-        ];
-      }
-
-      await user.send(sendOptions);
-      return { success: true };
-    } catch (error) {
-      console.error("❌ Error sending DM:", error);
-      throw new Error("Could not send DM (User might have DMs disabled).");
+    const user = await this.client.users.fetch(userId);
+    const sendOptions: any = {};
+    if (options.content) sendOptions.content = options.content;
+    if (options.embed) {
+      sendOptions.embeds = [
+        {
+          title: options.embed.title,
+          description: options.embed.description,
+          color: options.embed.color
+            ? parseInt(options.embed.color.replace("#", ""), 16)
+            : 0x1976d2,
+          timestamp: new Date().toISOString(),
+        },
+      ];
     }
-  }
-
-  async joinVoice(channelId: string) {
-    if (!this.client) throw new Error("Bot is not initialized.");
-
-    try {
-      const channel = await this.client.channels.fetch(channelId);
-      if (!channel || channel.type !== ChannelType.GuildVoice) {
-        throw new Error("Voice channel not found or invalid type.");
-      }
-
-      const connection = joinVoiceChannel({
-        channelId: channel.id,
-        guildId: (channel as any).guild.id,
-        adapterCreator: (channel as any).guild.voiceAdapterCreator,
-      });
-
-      connection.on(VoiceConnectionStatus.Ready, () => {
-        console.log(`✅ Joined voice channel: ${channel.name}`);
-      });
-
-      return { success: true };
-    } catch (error) {
-      console.error("❌ Error joining voice:", error);
-      throw error;
-    }
+    await user.send(sendOptions);
+    return { success: true };
   }
 
   async deleteMessage(channelId: string, messageId: string) {
     if (!this.client) throw new Error("Bot is not initialized.");
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || !("messages" in channel)) throw new Error("Channel error.");
+    const message = await (channel as any).messages.fetch(messageId);
+    await message.delete();
+    return { success: true };
+  }
 
+  // --- NEUE FUNKTION: REAKTION HINZUFÜGEN ---
+  async addReaction(channelId: string, messageId: string, emoji: string) {
+    if (!this.client) throw new Error("Bot is not initialized.");
     try {
       const channel = await this.client.channels.fetch(channelId);
-      if (!channel || !("messages" in channel)) {
-        throw new Error("Channel not found or does not support messages.");
-      }
+      if (!channel || !("messages" in channel))
+        throw new Error("Channel not found.");
 
       const message = await (channel as any).messages.fetch(messageId);
-      if (!message) {
-        throw new Error("Message not found.");
-      }
+      if (!message) throw new Error("Message not found.");
 
-      await message.delete();
+      // Reagiert mit dem Emoji-String (z.B. <:name:id>)
+      await message.react(emoji.trim());
       return { success: true };
     } catch (error: any) {
-      console.error("❌ Error deleting message:", error);
-      throw new Error(error.message || "Could not delete message.");
+      console.error("❌ Error adding reaction:", error);
+      throw new Error(error.message || "Could not add reaction.");
     }
+  }
+
+  async createInvite(serverId: string) {
+    if (!this.client) return null;
+    const guild = await this.client.guilds.fetch(serverId);
+    const textChannel = (await guild.channels.fetch()).find(
+      (c: any) => c?.type === 0,
+    );
+    if (!textChannel || !("createInvite" in textChannel))
+      throw new Error("No channel found.");
+    const invite = await (textChannel as any).createInvite({
+      maxAge: 0,
+      maxUses: 0,
+      unique: true,
+    });
+    return invite.url;
+  }
+
+  async joinVoice(channelId: string) {
+    if (!this.client) throw new Error("Bot is not initialized.");
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || channel.type !== ChannelType.GuildVoice)
+      throw new Error("Invalid voice channel.");
+    const connection = joinVoiceChannel({
+      channelId: channel.id,
+      guildId: (channel as any).guild.id,
+      adapterCreator: (channel as any).guild.voiceAdapterCreator,
+    });
+    return { success: true };
   }
 
   isReady(): boolean {
