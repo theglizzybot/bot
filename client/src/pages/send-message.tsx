@@ -409,68 +409,38 @@ export default function SendMessagePage() {
           <CardHeader>
             <CardTitle>Delete Message</CardTitle>
             <CardDescription>
-              Delete a specific message sent by the bot using its ID
+              Format: [ChannelID]-[MessageID] (e.g. 1443318323017420891-1471981340231467101)
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Server</label>
-                  <Select
-                    onValueChange={(val) => setSelectedServer(val)}
-                    value={selectedServer}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Server" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {servers?.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Channel</label>
-                  <Select
-                    onValueChange={(val) => form.setValue("channelId", val)}
-                    value={form.watch("channelId")}
-                    disabled={!selectedServer}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Channel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableChannels.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          # {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Message ID</label>
+                <label className="text-sm font-medium">Combined ID</label>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="e.g. 123456789012345678"
+                    placeholder="ChannelID-MessageID"
                     onChange={(e) => form.setValue("userId", e.target.value)}
                     value={form.watch("userId")}
+                    data-testid="input-delete-combined-id"
                   />
                   <Button
                     variant="destructive"
                     className="shrink-0"
                     onClick={() => {
-                      const channelId = form.getValues("channelId");
-                      const messageId = form.getValues("userId");
+                      const combinedId = form.getValues("userId");
+                      if (!combinedId || !combinedId.includes("-")) {
+                        toast({
+                          title: "Error",
+                          description: "Please enter ID in format: ChannelID-MessageID",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      const [channelId, messageId] = combinedId.split("-");
                       if (!channelId || !messageId) {
                         toast({
                           title: "Error",
-                          description: "Please select a channel and enter a message ID",
+                          description: "Invalid format. Use: ChannelID-MessageID",
                           variant: "destructive",
                         });
                         return;
@@ -478,6 +448,7 @@ export default function SendMessagePage() {
                       deleteMessageMutation.mutate({ channelId, messageId });
                     }}
                     disabled={deleteMessageMutation.isPending}
+                    data-testid="button-delete-message-combined"
                   >
                     {deleteMessageMutation.isPending ? (
                       <Loader2 className="animate-spin w-4 h-4" />
