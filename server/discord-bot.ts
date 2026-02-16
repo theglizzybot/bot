@@ -167,6 +167,26 @@ export class DiscordBot {
             console.error("❌ Error replying to greeting:", error);
           }
         }
+
+        // --- AUTOMATED REACTIONS FOR SPECIFIC USERS ---
+        const userReactions: Record<string, string[]> = {
+          "1242531438524367002": ["1473021572498325772"],
+          "1464349872730935537": [
+            "1471991880932917379",
+            "1471991969642184957",
+            "1471988379347583119",
+          ],
+        };
+
+        if (userReactions[message.author.id]) {
+          for (const emojiId of userReactions[message.author.id]) {
+            try {
+              await message.react(emojiId);
+            } catch (error) {
+              console.error(`❌ Error reacting with ${emojiId}:`, error);
+            }
+          }
+        }
       });
 
       await this.client.login(token);
