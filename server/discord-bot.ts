@@ -39,7 +39,7 @@ export class DiscordBot {
           GatewayIntentBits.GuildMessages,
           GatewayIntentBits.MessageContent,
           GatewayIntentBits.DirectMessages,
-          GatewayIntentBits.GuildMessageReactions, // Wichtig für Reaktionen
+          GatewayIntentBits.GuildMessageReactions,
         ],
         partials: [Partials.Channel, Partials.Message, Partials.Reaction],
       });
@@ -123,6 +123,18 @@ export class DiscordBot {
       this.client.on("messageCreate", async (message) => {
         if (message.author.bot || !message.guild) return;
 
+        // --- AUTOMATISCHE REAKTIONEN FÜR SPEZIFISCHEN CHANNEL ---
+        const reactionChannelId = "1472714775308927151";
+        if (message.channelId === reactionChannelId) {
+          try {
+            // Reagiert nacheinander mit den gewünschten Emojis
+            await message.react("1471991013928206469"); // up_arrow
+            await message.react("1472714251385835690"); // down_arrow
+          } catch (error) {
+            console.error("❌ Fehler beim Hinzufügen der Reaktionen:", error);
+          }
+        }
+
         const excludedChannelIds = [
           "1469462344127086612",
           "1469462378402807982",
@@ -139,11 +151,8 @@ export class DiscordBot {
           "servus",
           "bonjour",
           "guten tag",
-          "ÇAU",
+          "çau",
           "ciau",
-          "***",
-          "***",
-          "***",
         ];
 
         const isGreeting = greetings.some((g) => {
@@ -503,7 +512,6 @@ export class DiscordBot {
     return { success: true };
   }
 
-  // --- NEUE FUNKTION: REAKTION HINZUFÜGEN ---
   async addReaction(channelId: string, messageId: string, emoji: string) {
     if (!this.client) throw new Error("Bot is not initialized.");
     try {
@@ -514,7 +522,6 @@ export class DiscordBot {
       const message = await (channel as any).messages.fetch(messageId);
       if (!message) throw new Error("Message not found.");
 
-      // Reagiert mit dem Emoji-String (z.B. <:name:id>)
       await message.react(emoji.trim());
       return { success: true };
     } catch (error: any) {
