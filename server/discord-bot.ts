@@ -180,11 +180,15 @@ export class DiscordBot {
           }
 
           try {
+            // Check if we already replied to a greeting in this message event
+            if ((message as any)._greetingReplied) return;
+            (message as any)._greetingReplied = true;
+
             await message.reply(`Hello, ${message.author}`);
           } catch (error) {
             console.error("❌ Error replying to greeting:", error);
           }
-          return; // Prevents duplicate handling if multiple checks pass
+          return;
         }
 
         // --- AUTOMATED REACTIONS FOR SPECIFIC USERS ---
