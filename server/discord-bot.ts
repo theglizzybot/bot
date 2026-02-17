@@ -141,6 +141,7 @@ export class DiscordBot {
         ];
         if (excludedChannelIds.includes(message.channelId)) return;
 
+        const content = message.content.toLowerCase().trim();
         const greetings = [
           "hi",
           "hallo",
