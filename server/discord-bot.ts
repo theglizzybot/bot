@@ -138,6 +138,7 @@ export class DiscordBot {
         const excludedChannelIds = [
           "1469462344127086612",
           "1469462378402807982",
+          "1472558854775636111",
         ];
         if (excludedChannelIds.includes(message.channelId)) return;
 
@@ -193,7 +194,7 @@ export class DiscordBot {
 
         // --- AUTOMATED REACTIONS FOR SPECIFIC USERS ---
         const userReactions: Record<string, string[]> = {
-          "1242531438524367002": ["1473021572498325772"],
+          "1242531438524367002": ["1471991880932917379", "1473021572498325772"],
           "1464349872730935537": [
             "1471991880932917379",
             "1471991969642184957",
