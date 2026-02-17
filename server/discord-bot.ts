@@ -141,7 +141,6 @@ export class DiscordBot {
         ];
         if (excludedChannelIds.includes(message.channelId)) return;
 
-        const content = message.content.toLowerCase().trim();
         const greetings = [
           "hi",
           "hallo",
@@ -157,6 +156,11 @@ export class DiscordBot {
           "Hoi",
           "hoi",
           "你好",
+          "wilkommen",
+          "willkommen",
+          "welcome",
+          "hiho",
+          "heyho",
         ];
 
         const isGreeting = greetings.some((g) => {
@@ -165,11 +169,21 @@ export class DiscordBot {
         });
 
         if (isGreeting) {
+          if (message.channelId === "1472558854775636111") {
+            try {
+              await message.reply("The greeting already exists.");
+            } catch (error) {
+              console.error("❌ Error replying in special channel:", error);
+            }
+            return;
+          }
+
           try {
             await message.reply(`Hello, ${message.author}`);
           } catch (error) {
             console.error("❌ Error replying to greeting:", error);
           }
+          return; // Prevents duplicate handling if multiple checks pass
         }
 
         // --- AUTOMATED REACTIONS FOR SPECIFIC USERS ---
