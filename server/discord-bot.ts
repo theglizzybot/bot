@@ -153,6 +153,10 @@ export class DiscordBot {
           "guten tag",
           "çau",
           "ciau",
+          "HOI",
+          "Hoi",
+          "hoi",
+          "你好",
         ];
 
         const isGreeting = greetings.some((g) => {
@@ -170,11 +174,16 @@ export class DiscordBot {
 
         // --- AUTOMATED REACTIONS FOR SPECIFIC USERS ---
         const userReactions: Record<string, string[]> = {
-          "1242531438524367002": ["1471992066279215315"],
+          "1242531438524367002": ["1473021572498325772"],
           "1464349872730935537": [
             "1471991880932917379",
             "1471991969642184957",
             "1471988379347583119",
+          ],
+          "1437203189651865643": [
+            "1473021649178726560",
+            "1473021572498325772",
+            "1472699457760919593",
           ],
         };
 
