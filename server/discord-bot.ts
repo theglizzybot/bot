@@ -647,64 +647,94 @@ export class DiscordBot {
     if (!channel || channel.type !== ChannelType.GuildVoice)
       throw new Error("Invalid voice channel.");
 
-    if (!this.audioPlayer) {
-      this.audioPlayer = createAudioPlayer();
+    // Always create a fresh audio player to avoid stale state
+    if (this.audioPlayer) {
+      this.audioPlayer.stop(true);
     }
+    this.audioPlayer = createAudioPlayer();
+
+    // Log all audio player errors
+    this.audioPlayer.on("error", (err) => {
+      console.error("❌ AudioPlayer error:", err.message, err);
+    });
+    this.audioPlayer.on(AudioPlayerStatus.Idle, () => {
+      console.log("ℹ️ AudioPlayer went Idle (playback ended or never started)");
+    });
+    this.audioPlayer.on(AudioPlayerStatus.Playing, () => {
+      console.log("▶️ AudioPlayer is now Playing");
+    });
+    this.audioPlayer.on(AudioPlayerStatus.Buffering, () => {
+      console.log("⏳ AudioPlayer is Buffering");
+    });
 
     const connection = joinVoiceChannel({
       channelId: channel.id,
       guildId: (channel as any).guild.id,
       adapterCreator: (channel as any).guild.voiceAdapterCreator,
       selfDeaf: false,
+      selfMute: false,
     });
+
+    connection.on("error", (err) => {
+      console.error("❌ Voice connection error:", err);
+    });
+
     connection.subscribe(this.audioPlayer);
 
     let resource;
 
     if (isFilePath) {
-      // Play from uploaded file
-      const stream = fs.createReadStream(source);
-      resource = createAudioResource(stream, {
+      // Pass the file path directly — @discordjs/voice will invoke FFmpeg automatically
+      console.log("🎵 Playing file:", source);
+      resource = createAudioResource(source, {
         inputType: StreamType.Arbitrary,
+        inlineVolume: true,
       });
     } else {
       // Check if it's a YouTube/SoundCloud URL
       const urlType = await playdl.validate(source);
-      if (urlType && (urlType as any) !== false) {
-        const stream = await playdl.stream(source);
-        resource = createAudioResource(stream.stream, {
-          inputType: stream.type as any,
-        });
+      console.log("🔍 URL type detected:", urlType, "for:", source);
+
+      if (urlType && (urlType as string) !== "search") {
+        try {
+          const stream = await playdl.stream(source);
+          console.log("🎵 Streaming via play-dl, type:", stream.type);
+          resource = createAudioResource(stream.stream, {
+            inputType: stream.type as any,
+            inlineVolume: true,
+          });
+        } catch (err: any) {
+          console.error("❌ play-dl stream failed:", err.message);
+          throw new Error("Konnte Stream nicht laden: " + err.message);
+        }
       } else {
-        // Direct audio URL (mp3, ogg, wav, etc.) via built-in https/http
-        const { get } = source.startsWith("https")
-          ? await import("https")
-          : await import("http");
-        const { Readable } = await import("stream");
-        const audioStream = await new Promise<import("stream").Readable>((resolve, reject) => {
-          get(source, (res) => {
-            if (res.statusCode && res.statusCode >= 400)
-              reject(new Error(`Could not fetch audio: HTTP ${res.statusCode}`));
-            else resolve(Readable.from(res as any));
-          }).on("error", reject);
-        });
-        resource = createAudioResource(audioStream, {
+        // Direct audio URL — pass as string so FFmpeg handles it
+        console.log("🎵 Playing direct URL via FFmpeg:", source);
+        resource = createAudioResource(source, {
           inputType: StreamType.Arbitrary,
+          inlineVolume: true,
         });
       }
     }
 
+    if (resource.volume) resource.volume.setVolume(1);
     this.audioPlayer.play(resource);
 
     return new Promise<{ success: true }>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        console.warn("⚠️ Audio: no Playing event after 10s, resolving anyway");
+        resolve({ success: true });
+      }, 10000);
+
       this.audioPlayer!.once(AudioPlayerStatus.Playing, () => {
+        clearTimeout(timeout);
         resolve({ success: true });
       });
+
       this.audioPlayer!.once("error", (err) => {
-        reject(new Error("Audio playback error: " + err.message));
+        clearTimeout(timeout);
+        reject(new Error("Audio-Fehler: " + err.message));
       });
-      // Resolve after 3s if no event fires (some streams start without event)
-      setTimeout(() => resolve({ success: true }), 3000);
     });
   }
 
