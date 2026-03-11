@@ -21,11 +21,17 @@ import {
   createAudioResource,
   AudioPlayerStatus,
   StreamType,
+  entersState,
 } from "@discordjs/voice";
 import playdl from "play-dl";
 import fs from "fs";
 import path from "path";
 import { storage } from "./storage";
+
+// Ensure FFmpeg can be found by @discordjs/voice
+if (!process.env.FFMPEG_PATH) {
+  process.env.FFMPEG_PATH = "/nix/store/7lf1gd43l0g040fs42nyddrz8jacagwp-replit-runtime-path/bin/ffmpeg";
+}
 
 export class DiscordBot {
   private client: Client | null = null;
@@ -48,6 +54,7 @@ export class DiscordBot {
           GatewayIntentBits.MessageContent,
           GatewayIntentBits.DirectMessages,
           GatewayIntentBits.GuildMessageReactions,
+          GatewayIntentBits.GuildVoiceStates,
         ],
         partials: [Partials.Channel, Partials.Message, Partials.Reaction],
       });
@@ -635,8 +642,17 @@ export class DiscordBot {
       channelId: channel.id,
       guildId: (channel as any).guild.id,
       adapterCreator: (channel as any).guild.voiceAdapterCreator,
+      selfDeaf: false,
+      selfMute: false,
     });
     connection.subscribe(this.audioPlayer);
+    try {
+      await entersState(connection, VoiceConnectionStatus.Ready, 10_000);
+      console.log("✅ Bot joined voice channel:", channelId);
+    } catch {
+      connection.destroy();
+      throw new Error("Voice-Verbindung konnte nicht hergestellt werden.");
+    }
     return { success: true };
   }
 
@@ -678,6 +694,15 @@ export class DiscordBot {
     connection.on("error", (err) => {
       console.error("❌ Voice connection error:", err);
     });
+
+    // Wait until the connection is fully ready before playing
+    try {
+      await entersState(connection, VoiceConnectionStatus.Ready, 10_000);
+      console.log("✅ Voice connection is Ready");
+    } catch (err) {
+      connection.destroy();
+      throw new Error("Konnte Voice-Verbindung nicht herstellen (Timeout). Bitte stelle sicher, dass der Bot Rechte hat dem Kanal beizutreten.");
+    }
 
     connection.subscribe(this.audioPlayer);
 
