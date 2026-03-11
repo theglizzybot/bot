@@ -339,7 +339,10 @@ export default function Dashboard() {
                       Audio Wiedergabe
                     </CardTitle>
                     <CardDescription className="mt-1">
-                      Spiele Audio im Sprachkanal ab – per URL oder Datei-Upload
+                      Spiele Audio im Sprachkanal ab – per URL oder Datei-Upload.{" "}
+                      <span className="text-yellow-500 font-medium">
+                        Funktioniert nur auf dem deployed Server (nicht im Entwicklungsmodus).
+                      </span>
                     </CardDescription>
                   </div>
                   <Button

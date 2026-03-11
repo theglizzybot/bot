@@ -683,28 +683,69 @@ export class DiscordBot {
       console.log("⏳ AudioPlayer is Buffering");
     });
 
-    const connection = joinVoiceChannel({
-      channelId: channel.id,
-      guildId: (channel as any).guild.id,
-      adapterCreator: (channel as any).guild.voiceAdapterCreator,
-      selfDeaf: false,
-      selfMute: false,
-    });
+    const guildId = (channel as any).guild.id;
 
-    connection.on("error", (err) => {
-      console.error("❌ Voice connection error:", err);
-    });
+    // Reuse existing connection or create a new one
+    const existingConn = getVoiceConnection(guildId);
+    const canReuse =
+      existingConn !== undefined &&
+      (existingConn.joinConfig as any)?.channelId === channel.id &&
+      existingConn.state.status !== VoiceConnectionStatus.Destroyed &&
+      existingConn.state.status !== VoiceConnectionStatus.Disconnected;
 
-    // Wait until the connection is fully ready before playing
-    try {
-      await entersState(connection, VoiceConnectionStatus.Ready, 10_000);
-      console.log("✅ Voice connection is Ready");
-    } catch (err) {
-      connection.destroy();
-      throw new Error("Konnte Voice-Verbindung nicht herstellen (Timeout). Bitte stelle sicher, dass der Bot Rechte hat dem Kanal beizutreten.");
+    if (!canReuse && existingConn) {
+      console.log("🔄 Leaving old channel...");
+      existingConn.destroy();
+      await new Promise((r) => setTimeout(r, 300));
     }
 
+    const connection = canReuse
+      ? existingConn!
+      : joinVoiceChannel({
+          channelId: channel.id,
+          guildId,
+          adapterCreator: (channel as any).guild.voiceAdapterCreator,
+          selfDeaf: false,
+          selfMute: false,
+        });
+
+    console.log(canReuse ? "♻️ Reusing voice connection" : "📡 New voice connection created");
+
+    connection.on("error", (err) => {
+      console.error("❌ Voice connection error:", err.message, err);
+    });
+
+    connection.on("stateChange", (oldState, newState) => {
+      console.log(`🔊 Voice state: ${oldState.status} → ${newState.status}`);
+    });
+
+    connection.on("debug", (msg) => {
+      console.log("🔍 Voice debug:", msg);
+    });
+
+    // Subscribe immediately so audio is queued
     connection.subscribe(this.audioPlayer);
+
+    // Wait up to 30s for ready
+    try {
+      await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
+      console.log("✅ Voice connection Ready — playback starting");
+    } catch {
+      const status = connection.state.status;
+      console.warn(`⚠️ Voice not Ready after 30s (status: ${status})`);
+      if (
+        status === VoiceConnectionStatus.Destroyed ||
+        status === VoiceConnectionStatus.Disconnected
+      ) {
+        throw new Error(
+          `Voice-Verbindung fehlgeschlagen (${status}). ` +
+          `Hinweis: Im Replit-Entwicklungsmodus ist UDP geblockt. ` +
+          `Audio-Wiedergabe funktioniert nur auf dem deployed Server.`
+        );
+      }
+      // If still in Connecting, we try anyway — might work on deployed server
+      console.log("🔁 Connection still in progress — attempting playback anyway...");
+    }
 
     let resource;
 
