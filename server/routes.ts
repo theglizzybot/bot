@@ -4,6 +4,23 @@ import { storage } from "./storage";
 import { discordBot } from "./discord-bot";
 import { insertApplicationSchema, sendMessageSchema } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+const uploadDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const upload = multer({
+  dest: uploadDir,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
+  fileFilter: (_req, file, cb) => {
+    const allowed = [".mp3", ".ogg", ".wav", ".flac", ".m4a", ".webm"];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) cb(null, true);
+    else cb(new Error("Nur Audio-Dateien erlaubt (mp3, ogg, wav, flac, m4a, webm)"));
+  },
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Bot-Status abrufen
@@ -142,6 +159,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       await discordBot.joinVoice(req.body.channelId);
       res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Audio abspielen via URL
+  app.post("/api/discord/voice/play-url", async (req, res) => {
+    try {
+      const { channelId, url } = req.body;
+      if (!channelId || !url)
+        return res.status(400).json({ message: "channelId und url erforderlich" });
+      if (!discordBot.isReady())
+        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+      await discordBot.playAudio(channelId, url, false);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Audio abspielen via Datei-Upload
+  app.post("/api/discord/voice/play-file", upload.single("audio"), async (req, res) => {
+    try {
+      const { channelId } = req.body;
+      if (!channelId || !req.file)
+        return res.status(400).json({ message: "channelId und Audiodatei erforderlich" });
+      if (!discordBot.isReady())
+        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+
+      await discordBot.playAudio(channelId, req.file.path, true);
+
+      // Clean up uploaded file after playback starts
+      setTimeout(() => {
+        try { fs.unlinkSync(req.file!.path); } catch {}
+      }, 30000);
+
+      res.json({ success: true });
+    } catch (error: any) {
+      if (req.file) try { fs.unlinkSync(req.file.path); } catch {}
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Audio stoppen
+  app.post("/api/discord/voice/stop", async (_req, res) => {
+    try {
+      const result = discordBot.stopAudio();
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

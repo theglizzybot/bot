@@ -17,13 +17,21 @@ import {
   joinVoiceChannel,
   getVoiceConnection,
   VoiceConnectionStatus,
+  createAudioPlayer,
+  createAudioResource,
+  AudioPlayerStatus,
+  StreamType,
 } from "@discordjs/voice";
+import playdl from "play-dl";
+import fs from "fs";
+import path from "path";
 import { storage } from "./storage";
 
 export class DiscordBot {
   private client: Client | null = null;
   private startTime: number = 0;
   private ready: boolean = false;
+  private audioPlayer: ReturnType<typeof createAudioPlayer> | null = null;
 
   async initialize() {
     try {
@@ -620,11 +628,90 @@ export class DiscordBot {
     const channel = await this.client.channels.fetch(channelId);
     if (!channel || channel.type !== ChannelType.GuildVoice)
       throw new Error("Invalid voice channel.");
+    if (!this.audioPlayer) {
+      this.audioPlayer = createAudioPlayer();
+    }
     const connection = joinVoiceChannel({
       channelId: channel.id,
       guildId: (channel as any).guild.id,
       adapterCreator: (channel as any).guild.voiceAdapterCreator,
     });
+    connection.subscribe(this.audioPlayer);
+    return { success: true };
+  }
+
+  async playAudio(channelId: string, source: string, isFilePath = false) {
+    if (!this.client) throw new Error("Bot is not initialized.");
+
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || channel.type !== ChannelType.GuildVoice)
+      throw new Error("Invalid voice channel.");
+
+    if (!this.audioPlayer) {
+      this.audioPlayer = createAudioPlayer();
+    }
+
+    const connection = joinVoiceChannel({
+      channelId: channel.id,
+      guildId: (channel as any).guild.id,
+      adapterCreator: (channel as any).guild.voiceAdapterCreator,
+      selfDeaf: false,
+    });
+    connection.subscribe(this.audioPlayer);
+
+    let resource;
+
+    if (isFilePath) {
+      // Play from uploaded file
+      const stream = fs.createReadStream(source);
+      resource = createAudioResource(stream, {
+        inputType: StreamType.Arbitrary,
+      });
+    } else {
+      // Check if it's a YouTube/SoundCloud URL
+      const urlType = await playdl.validate(source);
+      if (urlType && (urlType as any) !== false) {
+        const stream = await playdl.stream(source);
+        resource = createAudioResource(stream.stream, {
+          inputType: stream.type as any,
+        });
+      } else {
+        // Direct audio URL (mp3, ogg, wav, etc.) via built-in https/http
+        const { get } = source.startsWith("https")
+          ? await import("https")
+          : await import("http");
+        const { Readable } = await import("stream");
+        const audioStream = await new Promise<import("stream").Readable>((resolve, reject) => {
+          get(source, (res) => {
+            if (res.statusCode && res.statusCode >= 400)
+              reject(new Error(`Could not fetch audio: HTTP ${res.statusCode}`));
+            else resolve(Readable.from(res as any));
+          }).on("error", reject);
+        });
+        resource = createAudioResource(audioStream, {
+          inputType: StreamType.Arbitrary,
+        });
+      }
+    }
+
+    this.audioPlayer.play(resource);
+
+    return new Promise<{ success: true }>((resolve, reject) => {
+      this.audioPlayer!.once(AudioPlayerStatus.Playing, () => {
+        resolve({ success: true });
+      });
+      this.audioPlayer!.once("error", (err) => {
+        reject(new Error("Audio playback error: " + err.message));
+      });
+      // Resolve after 3s if no event fires (some streams start without event)
+      setTimeout(() => resolve({ success: true }), 3000);
+    });
+  }
+
+  stopAudio() {
+    if (this.audioPlayer) {
+      this.audioPlayer.stop();
+    }
     return { success: true };
   }
 

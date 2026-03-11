@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Card,
@@ -17,9 +17,15 @@ import {
   Hash,
   SmilePlus,
   MessageSquare,
+  Music,
+  Link,
+  Upload,
+  StopCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { BotStatus } from "@shared/schema";
@@ -27,10 +33,16 @@ import type { BotStatus } from "@shared/schema";
 export default function Dashboard() {
   const { toast } = useToast();
 
-  // States für Voice
+  // States für Voice Join
   const [targetChannelId, setTargetChannelId] = useState("1471577369440686429");
 
-  // NEU: States für Reaktionen
+  // States für Audio
+  const [audioChannelId, setAudioChannelId] = useState("1471577369440686429");
+  const [audioUrl, setAudioUrl] = useState("");
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // States für Reaktionen
   const [reactChannelId, setReactChannelId] = useState("");
   const [reactMessageId, setReactMessageId] = useState("");
   const [reactEmoji, setReactEmoji] = useState(
@@ -45,26 +57,77 @@ export default function Dashboard() {
   const joinVoiceMutation = useMutation({
     mutationFn: async (channelId: string) => {
       const res = await apiRequest("POST", "/api/discord/voice/join", {
-        channelId: channelId,
+        channelId,
       });
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Erfolg",
-        description: `Bot ist dem Sprachkanal beigetreten.`,
-      });
+      toast({ title: "Erfolg", description: "Bot ist dem Sprachkanal beigetreten." });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Fehler",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
     },
   });
 
-  // NEU: Mutation für Reaktionen
+  // Mutation: Audio via URL abspielen
+  const playUrlMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/discord/voice/play-url", {
+        channelId: audioChannelId,
+        url: audioUrl,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Audio gestartet", description: "Der Bot spielt jetzt Audio ab." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Mutation: Audio via Datei abspielen
+  const playFileMutation = useMutation({
+    mutationFn: async () => {
+      if (!audioFile) throw new Error("Keine Datei ausgewählt");
+      const formData = new FormData();
+      formData.append("channelId", audioChannelId);
+      formData.append("audio", audioFile);
+      const res = await fetch("/api/discord/voice/play-file", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Upload fehlgeschlagen");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Audio gestartet", description: "Datei wird im Sprachkanal abgespielt." });
+      setAudioFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    },
+    onError: (error: Error) => {
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Mutation: Audio stoppen
+  const stopAudioMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/discord/voice/stop", {});
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Audio gestoppt", description: "Die Wiedergabe wurde beendet." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Mutation für Reaktionen
   const addReactionMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/discord/messages/react", {
@@ -75,17 +138,10 @@ export default function Dashboard() {
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Reaktion gesendet",
-        description: "Das Emoji wurde erfolgreich zur Nachricht hinzugefügt.",
-      });
+      toast({ title: "Reaktion gesendet", description: "Das Emoji wurde erfolgreich hinzugefügt." });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Fehler",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
     },
   });
 
@@ -116,7 +172,7 @@ export default function Dashboard() {
           <>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between gap-1 pb-2">
                   <CardTitle className="text-sm font-medium">Status</CardTitle>
                   <Activity className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
@@ -136,7 +192,7 @@ export default function Dashboard() {
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between gap-1 pb-2">
                   <CardTitle className="text-sm font-medium">Uptime</CardTitle>
                   <Clock className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
@@ -144,14 +200,12 @@ export default function Dashboard() {
                   <div className="text-2xl font-bold mb-2">
                     {botStatus?.uptime ? formatUptime(botStatus.uptime) : "0m"}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Since last restart
-                  </p>
+                  <p className="text-xs text-muted-foreground">Since last restart</p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between gap-1 pb-2">
                   <CardTitle className="text-sm font-medium">Servers</CardTitle>
                   <Server className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
@@ -159,14 +213,12 @@ export default function Dashboard() {
                   <div className="text-2xl font-bold mb-2">
                     {botStatus?.serverCount || 0}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Connected Guilds
-                  </p>
+                  <p className="text-xs text-muted-foreground">Connected Guilds</p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between gap-1 pb-2">
                   <CardTitle className="text-sm font-medium">Version</CardTitle>
                   <FileText className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
@@ -189,9 +241,10 @@ export default function Dashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="relative flex-1">
+                  <div className="relative">
                     <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
+                      data-testid="input-voice-channel-id"
                       placeholder="Voice Channel ID"
                       value={targetChannelId}
                       onChange={(e) => setTargetChannelId(e.target.value)}
@@ -199,6 +252,7 @@ export default function Dashboard() {
                     />
                   </div>
                   <Button
+                    data-testid="button-join-voice"
                     onClick={() => joinVoiceMutation.mutate(targetChannelId)}
                     disabled={joinVoiceMutation.isPending || !targetChannelId}
                     className="w-full gap-2"
@@ -213,7 +267,7 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              {/* NEU: Reaktions-Steuerung */}
+              {/* Reaktions-Steuerung */}
               <Card>
                 <CardHeader>
                   <CardTitle>Reaktions-Steuerung</CardTitle>
@@ -226,6 +280,7 @@ export default function Dashboard() {
                     <div className="relative">
                       <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
+                        data-testid="input-react-channel-id"
                         placeholder="Channel ID"
                         value={reactChannelId}
                         onChange={(e) => setReactChannelId(e.target.value)}
@@ -235,6 +290,7 @@ export default function Dashboard() {
                     <div className="relative">
                       <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
+                        data-testid="input-react-message-id"
                         placeholder="Message ID"
                         value={reactMessageId}
                         onChange={(e) => setReactMessageId(e.target.value)}
@@ -244,6 +300,7 @@ export default function Dashboard() {
                     <div className="relative">
                       <SmilePlus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
+                        data-testid="input-react-emoji"
                         placeholder="Emoji (z.B. <:name:id>)"
                         value={reactEmoji}
                         onChange={(e) => setReactEmoji(e.target.value)}
@@ -252,13 +309,14 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <Button
+                    data-testid="button-add-reaction"
                     onClick={() => addReactionMutation.mutate()}
                     disabled={
                       addReactionMutation.isPending ||
                       !reactMessageId ||
                       !reactChannelId
                     }
-                    className="w-full gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                    className="w-full gap-2"
                   >
                     {addReactionMutation.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -270,6 +328,127 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Audio Wiedergabe */}
+            <Card>
+              <CardHeader>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Music className="w-5 h-5" />
+                      Audio Wiedergabe
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      Spiele Audio im Sprachkanal ab – per URL oder Datei-Upload
+                    </CardDescription>
+                  </div>
+                  <Button
+                    data-testid="button-stop-audio"
+                    variant="destructive"
+                    onClick={() => stopAudioMutation.mutate()}
+                    disabled={stopAudioMutation.isPending}
+                    className="gap-2"
+                  >
+                    {stopAudioMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <StopCircle className="w-4 h-4" />
+                    )}
+                    Stopp
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="relative">
+                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    data-testid="input-audio-channel-id"
+                    placeholder="Voice Channel ID"
+                    value={audioChannelId}
+                    onChange={(e) => setAudioChannelId(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+
+                <Tabs defaultValue="url">
+                  <TabsList className="w-full">
+                    <TabsTrigger value="url" className="flex-1 gap-2">
+                      <Link className="w-4 h-4" />
+                      URL
+                    </TabsTrigger>
+                    <TabsTrigger value="file" className="flex-1 gap-2">
+                      <Upload className="w-4 h-4" />
+                      Datei-Upload
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="url" className="space-y-3 pt-3">
+                    <div className="space-y-1">
+                      <Label className="text-sm text-muted-foreground">
+                        YouTube, SoundCloud oder direkte Audio-URL (mp3, ogg, wav …)
+                      </Label>
+                      <div className="relative">
+                        <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          data-testid="input-audio-url"
+                          placeholder="https://..."
+                          value={audioUrl}
+                          onChange={(e) => setAudioUrl(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      data-testid="button-play-url"
+                      onClick={() => playUrlMutation.mutate()}
+                      disabled={playUrlMutation.isPending || !audioUrl || !audioChannelId}
+                      className="w-full gap-2"
+                    >
+                      {playUrlMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Music className="w-4 h-4" />
+                      )}
+                      URL abspielen
+                    </Button>
+                  </TabsContent>
+
+                  <TabsContent value="file" className="space-y-3 pt-3">
+                    <div className="space-y-1">
+                      <Label className="text-sm text-muted-foreground">
+                        Audiodatei hochladen (mp3, ogg, wav, flac, m4a, webm · max. 50 MB)
+                      </Label>
+                      <Input
+                        data-testid="input-audio-file"
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".mp3,.ogg,.wav,.flac,.m4a,.webm"
+                        onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
+                      />
+                    </div>
+                    {audioFile && (
+                      <p className="text-xs text-muted-foreground">
+                        Ausgewählt: <span className="font-medium text-foreground">{audioFile.name}</span>{" "}
+                        ({(audioFile.size / 1024 / 1024).toFixed(2)} MB)
+                      </p>
+                    )}
+                    <Button
+                      data-testid="button-play-file"
+                      onClick={() => playFileMutation.mutate()}
+                      disabled={playFileMutation.isPending || !audioFile || !audioChannelId}
+                      className="w-full gap-2"
+                    >
+                      {playFileMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                      Datei abspielen
+                    </Button>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           </>
         )}
       </div>
