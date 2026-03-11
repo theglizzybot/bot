@@ -29,8 +29,47 @@ import path from "path";
 import { storage } from "./storage";
 
 // Ensure FFmpeg can be found by @discordjs/voice
-if (!process.env.FFMPEG_PATH) {
-  process.env.FFMPEG_PATH = "/nix/store/7lf1gd43l0g040fs42nyddrz8jacagwp-replit-runtime-path/bin/ffmpeg";
+import { execSync } from "child_process";
+
+function findFfmpeg(): string | null {
+  // 1. Try ffmpeg-static (bundled binary, works everywhere)
+  try {
+    const ffmpegStatic = require("ffmpeg-static");
+    if (ffmpegStatic && fs.existsSync(ffmpegStatic)) return ffmpegStatic;
+  } catch {}
+
+  // 2. Try known Replit/system paths
+  const candidates = [
+    process.env.FFMPEG_PATH,
+    "/nix/store/7lf1gd43l0g040fs42nyddrz8jacagwp-replit-runtime-path/bin/ffmpeg",
+    "/usr/bin/ffmpeg",
+    "/usr/local/bin/ffmpeg",
+    "/bin/ffmpeg",
+  ].filter(Boolean) as string[];
+
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) return p;
+    } catch {}
+  }
+
+  // 3. Fallback: ask the system shell
+  try {
+    const found = execSync("which ffmpeg 2>/dev/null || command -v ffmpeg 2>/dev/null", {
+      encoding: "utf8",
+    }).trim();
+    if (found) return found;
+  } catch {}
+
+  return null;
+}
+
+const ffmpegPath = findFfmpeg();
+if (ffmpegPath) {
+  process.env.FFMPEG_PATH = ffmpegPath;
+  console.log("✅ FFmpeg gefunden:", ffmpegPath);
+} else {
+  console.warn("⚠️ FFmpeg nicht gefunden — Audio-Wiedergabe funktioniert möglicherweise nicht");
 }
 
 export class DiscordBot {
