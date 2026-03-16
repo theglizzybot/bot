@@ -39,7 +39,9 @@ import { execSync } from "child_process";
       return;
     }
   } catch {}
-  console.warn("⚠️ FFmpeg nicht gefunden — Audio-Wiedergabe funktioniert möglicherweise nicht");
+  console.warn(
+    "⚠️ FFmpeg nicht gefunden — Audio-Wiedergabe funktioniert möglicherweise nicht",
+  );
 })();
 
 export class DiscordBot {
@@ -151,7 +153,6 @@ export class DiscordBot {
         const reactionChannelId = "1472714775308927151";
         if (message.channelId === reactionChannelId) {
           try {
-            // Reagiert nacheinander mit den gewünschten Emojis
             await message.react("1471991013928206469"); // up_arrow
             await message.react("1472714251385835690"); // down_arrow
           } catch (error) {
@@ -159,6 +160,38 @@ export class DiscordBot {
           }
         }
 
+        // --- AUTOMATISCHE REAKTIONEN FÜR SPEZIFISCHE USER ---
+        // (läuft in ALLEN Channels, unabhängig von Grüßen oder Ausschlüssen)
+        const userReactions: Record<string, string[]> = {
+          "1242531438524367002": ["1471991880932917379", "1473021572498325772"],
+          "1464349872730935537": [
+            "1471991880932917379",
+            "1471991969642184957",
+            "1471988379347583119",
+          ],
+          "1437203189651865643": [
+            "1473021649178726560",
+            "1473021572498325772",
+            "1472699457760919593",
+          ],
+          "1297267934908907622": [
+            "1471991969642184957",
+            "1471991880932917379",
+            "1471989978216141044",
+          ],
+        };
+
+        if (userReactions[message.author.id]) {
+          for (const emojiId of userReactions[message.author.id]) {
+            try {
+              await message.react(emojiId);
+            } catch (error) {
+              console.error(`❌ Error reacting with ${emojiId}:`, error);
+            }
+          }
+        }
+
+        // --- KANAL-AUSSCHLÜSSE für Gruß-Logik ---
         const excludedChannelIds = [
           "1469462344127086612",
           "1469462378402807982",
@@ -236,30 +269,6 @@ export class DiscordBot {
           return;
         }
 
-        // --- AUTOMATED REACTIONS FOR SPECIFIC USERS ---
-        const userReactions: Record<string, string[]> = {
-          "1242531438524367002": ["1471991880932917379", "1473021572498325772"],
-          "1464349872730935537": [
-            "1471991880932917379",
-            "1471991969642184957",
-            "1471988379347583119",
-          ],
-          "1437203189651865643": [
-            "1473021649178726560",
-            "1473021572498325772",
-            "1472699457760919593",
-          ],
-        };
-
-        if (userReactions[message.author.id]) {
-          for (const emojiId of userReactions[message.author.id]) {
-            try {
-              await message.react(emojiId);
-            } catch (error) {
-              console.error(`❌ Error reacting with ${emojiId}:`, error);
-            }
-          }
-        }
       });
 
       await this.client.login(token);
@@ -719,7 +728,11 @@ export class DiscordBot {
           selfMute: false,
         });
 
-    console.log(canReuse ? "♻️ Reusing voice connection" : "📡 New voice connection created");
+    console.log(
+      canReuse
+        ? "♻️ Reusing voice connection"
+        : "📡 New voice connection created",
+    );
 
     connection.on("error", (err) => {
       console.error("❌ Voice connection error:", err.message, err);
@@ -749,12 +762,14 @@ export class DiscordBot {
       ) {
         throw new Error(
           `Voice-Verbindung fehlgeschlagen (${status}). ` +
-          `Hinweis: Im Replit-Entwicklungsmodus ist UDP geblockt. ` +
-          `Audio-Wiedergabe funktioniert nur auf dem deployed Server.`
+            `Hinweis: Im Replit-Entwicklungsmodus ist UDP geblockt. ` +
+            `Audio-Wiedergabe funktioniert nur auf dem deployed Server.`,
         );
       }
       // If still in Connecting, we try anyway — might work on deployed server
-      console.log("🔁 Connection still in progress — attempting playback anyway...");
+      console.log(
+        "🔁 Connection still in progress — attempting playback anyway...",
+      );
     }
 
     let resource;
