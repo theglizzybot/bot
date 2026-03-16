@@ -153,8 +153,15 @@ export class DiscordBot {
         const reactionChannelId = "1472714775308927151";
         if (message.channelId === reactionChannelId) {
           try {
-            await message.react("1471991013928206469"); // up_arrow
-            await message.react("1472714251385835690"); // down_arrow
+            const freshMsg = await message.fetch(true).catch(() => message);
+            for (const emojiId of ["1471991013928206469", "1472714251385835690"]) {
+              const alreadyReacted = freshMsg.reactions.cache.some(
+                (r) => r.emoji.id === emojiId && r.me,
+              );
+              if (!alreadyReacted) {
+                await message.react(emojiId);
+              }
+            }
           } catch (error) {
             console.error("❌ Fehler beim Hinzufügen der Reaktionen:", error);
           }
@@ -182,9 +189,16 @@ export class DiscordBot {
         };
 
         if (userReactions[message.author.id]) {
+          // Fetch fresh message state to check existing reactions (prevents toggle by two instances)
+          const freshMsg = await message.fetch(true).catch(() => message);
           for (const emojiId of userReactions[message.author.id]) {
             try {
-              await message.react(emojiId);
+              const alreadyReacted = freshMsg.reactions.cache.some(
+                (r) => r.emoji.id === emojiId && r.me,
+              );
+              if (!alreadyReacted) {
+                await message.react(emojiId);
+              }
             } catch (error) {
               console.error(`❌ Error reacting with ${emojiId}:`, error);
             }
