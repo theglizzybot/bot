@@ -663,158 +663,144 @@ export class DiscordBot {
     return invite.url;
   }
 
-  async joinVoice(channelId: string) {
+  private async resolveVoiceChannel(channelId: string) {
     if (!this.client) throw new Error("Bot is not initialized.");
     const channel = await this.client.channels.fetch(channelId);
     if (!channel || channel.type !== ChannelType.GuildVoice)
-      throw new Error("Invalid voice channel.");
-    if (!this.audioPlayer) {
-      this.audioPlayer = createAudioPlayer();
+      throw new Error("Ungültiger Voice-Channel.");
+    const guildId = (channel as any).guildId as string;
+    const guild =
+      this.client.guilds.cache.get(guildId) ??
+      (await this.client.guilds.fetch(guildId));
+    if (!guild) throw new Error("Server nicht gefunden.");
+    return { channel, guild, guildId };
+  }
+
+  async joinVoice(channelId: string) {
+    const { channel, guild } = await this.resolveVoiceChannel(channelId);
+
+    // Destroy stale connection for this guild if any
+    const existing = getVoiceConnection(guild.id);
+    if (existing) {
+      existing.destroy();
+      await new Promise((r) => setTimeout(r, 400));
     }
+
+    if (!this.audioPlayer) this.audioPlayer = createAudioPlayer();
+
     const connection = joinVoiceChannel({
       channelId: channel.id,
-      guildId: (channel as any).guild.id,
-      adapterCreator: (channel as any).guild.voiceAdapterCreator,
+      guildId: guild.id,
+      adapterCreator: guild.voiceAdapterCreator,
       selfDeaf: false,
       selfMute: false,
     });
     connection.subscribe(this.audioPlayer);
+
     try {
-      await entersState(connection, VoiceConnectionStatus.Ready, 10_000);
-      console.log("✅ Bot joined voice channel:", channelId);
+      await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
+      console.log("✅ Sprachkanal beigetreten:", channelId);
     } catch {
       connection.destroy();
-      throw new Error("Voice-Verbindung konnte nicht hergestellt werden.");
+      throw new Error(
+        "Sprachkanal-Verbindung fehlgeschlagen. " +
+          "Bitte stelle sicher dass der Bot VERBINDEN- und SPRECHEN-Berechtigungen hat. " +
+          "(Im Entwicklungsmodus ist UDP geblockt — teste auf dem deployed Server.)",
+      );
     }
     return { success: true };
   }
 
   async playAudio(channelId: string, source: string, isFilePath = false) {
-    if (!this.client) throw new Error("Bot is not initialized.");
+    const { channel, guild } = await this.resolveVoiceChannel(channelId);
 
-    const channel = await this.client.channels.fetch(channelId);
-    if (!channel || channel.type !== ChannelType.GuildVoice)
-      throw new Error("Invalid voice channel.");
-
-    // Always create a fresh audio player to avoid stale state
-    if (this.audioPlayer) {
-      this.audioPlayer.stop(true);
-    }
+    // Fresh audio player every time to avoid stale state
+    if (this.audioPlayer) this.audioPlayer.stop(true);
     this.audioPlayer = createAudioPlayer();
+    this.audioPlayer.on("error", (err) =>
+      console.error("❌ AudioPlayer error:", err.message),
+    );
+    this.audioPlayer.on(AudioPlayerStatus.Playing, () =>
+      console.log("▶️ AudioPlayer: Playing"),
+    );
+    this.audioPlayer.on(AudioPlayerStatus.Idle, () =>
+      console.log("ℹ️ AudioPlayer: Idle"),
+    );
 
-    // Log all audio player errors
-    this.audioPlayer.on("error", (err) => {
-      console.error("❌ AudioPlayer error:", err.message, err);
-    });
-    this.audioPlayer.on(AudioPlayerStatus.Idle, () => {
-      console.log("ℹ️ AudioPlayer went Idle (playback ended or never started)");
-    });
-    this.audioPlayer.on(AudioPlayerStatus.Playing, () => {
-      console.log("▶️ AudioPlayer is now Playing");
-    });
-    this.audioPlayer.on(AudioPlayerStatus.Buffering, () => {
-      console.log("⏳ AudioPlayer is Buffering");
-    });
-
-    const guildId = (channel as any).guild.id;
-
-    // Reuse existing connection or create a new one
-    const existingConn = getVoiceConnection(guildId);
+    // Reuse existing ready connection for same channel, otherwise create new one
+    const existingConn = getVoiceConnection(guild.id);
     const canReuse =
       existingConn !== undefined &&
-      (existingConn.joinConfig as any)?.channelId === channel.id &&
+      existingConn.joinConfig.channelId === channel.id &&
       existingConn.state.status !== VoiceConnectionStatus.Destroyed &&
       existingConn.state.status !== VoiceConnectionStatus.Disconnected;
 
     if (!canReuse && existingConn) {
-      console.log("🔄 Leaving old channel...");
+      console.log("🔄 Destroying old connection...");
       existingConn.destroy();
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 400));
     }
 
     const connection = canReuse
       ? existingConn!
       : joinVoiceChannel({
           channelId: channel.id,
-          guildId,
-          adapterCreator: (channel as any).guild.voiceAdapterCreator,
+          guildId: guild.id,
+          adapterCreator: guild.voiceAdapterCreator,
           selfDeaf: false,
           selfMute: false,
         });
 
-    console.log(
-      canReuse
-        ? "♻️ Reusing voice connection"
-        : "📡 New voice connection created",
-    );
-
-    connection.on("error", (err) => {
-      console.error("❌ Voice connection error:", err.message, err);
-    });
-
-    connection.on("stateChange", (oldState, newState) => {
-      console.log(`🔊 Voice state: ${oldState.status} → ${newState.status}`);
-    });
-
-    connection.on("debug", (msg) => {
-      console.log("🔍 Voice debug:", msg);
-    });
-
-    // Subscribe immediately so audio is queued
+    console.log(canReuse ? "♻️ Reusing connection" : "📡 New connection");
     connection.subscribe(this.audioPlayer);
 
-    // Wait up to 30s for ready
+    // Wait for Ready (with a helpful error message if UDP is blocked)
     try {
-      await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
-      console.log("✅ Voice connection Ready — playback starting");
+      await entersState(connection, VoiceConnectionStatus.Ready, 25_000);
+      console.log("✅ Voice connection Ready");
     } catch {
-      const status = connection.state.status;
-      console.warn(`⚠️ Voice not Ready after 30s (status: ${status})`);
+      const s = connection.state.status;
       if (
-        status === VoiceConnectionStatus.Destroyed ||
-        status === VoiceConnectionStatus.Disconnected
+        s === VoiceConnectionStatus.Destroyed ||
+        s === VoiceConnectionStatus.Disconnected
       ) {
         throw new Error(
-          `Voice-Verbindung fehlgeschlagen (${status}). ` +
-            `Hinweis: Im Replit-Entwicklungsmodus ist UDP geblockt. ` +
-            `Audio-Wiedergabe funktioniert nur auf dem deployed Server.`,
+          `Voice-Verbindung fehlgeschlagen. Berechtigungen prüfen (VERBINDEN + SPRECHEN). ` +
+            `Im Entwicklungsmodus ist UDP geblockt — nur auf dem deployed Server nutzbar.`,
         );
       }
-      // If still in Connecting, we try anyway — might work on deployed server
-      console.log(
-        "🔁 Connection still in progress — attempting playback anyway...",
-      );
+      console.warn(`⚠️ Voice noch nicht Ready (${s}) — versuche trotzdem abzuspielen...`);
     }
 
+    // Build audio resource
     let resource;
-
     if (isFilePath) {
-      // Pass the file path directly — @discordjs/voice will invoke FFmpeg automatically
-      console.log("🎵 Playing file:", source);
-      resource = createAudioResource(source, {
+      console.log("🎵 File:", source);
+      resource = createAudioResource(fs.createReadStream(source), {
         inputType: StreamType.Arbitrary,
         inlineVolume: true,
       });
     } else {
-      // Check if it's a YouTube/SoundCloud URL
-      const urlType = await playdl.validate(source);
-      console.log("🔍 URL type detected:", urlType, "for:", source);
+      let urlType: string | false = false;
+      try { urlType = await playdl.validate(source); } catch {}
+      console.log("🔍 URL type:", urlType, "->", source);
 
-      if (urlType && (urlType as string) !== "search") {
+      if (urlType && urlType !== "search") {
+        // YouTube / SoundCloud via play-dl
         try {
           const stream = await playdl.stream(source);
-          console.log("🎵 Streaming via play-dl, type:", stream.type);
+          console.log("🎵 play-dl stream type:", stream.type);
           resource = createAudioResource(stream.stream, {
             inputType: stream.type as any,
             inlineVolume: true,
           });
         } catch (err: any) {
-          console.error("❌ play-dl stream failed:", err.message);
-          throw new Error("Konnte Stream nicht laden: " + err.message);
+          console.error("❌ play-dl failed:", err.message);
+          throw new Error("Stream-Fehler: " + err.message);
         }
       } else {
-        // Direct audio URL — pass as string so FFmpeg handles it
-        console.log("🎵 Playing direct URL via FFmpeg:", source);
+        // Direct audio URL (mp3, ogg, etc.) — FFmpeg handles HTTP URLs
+        console.log("🎵 Direct URL via FFmpeg:", source);
         resource = createAudioResource(source, {
           inputType: StreamType.Arbitrary,
           inlineVolume: true,
@@ -827,15 +813,15 @@ export class DiscordBot {
 
     return new Promise<{ success: true }>((resolve, reject) => {
       const timeout = setTimeout(() => {
-        console.warn("⚠️ Audio: no Playing event after 10s, resolving anyway");
+        console.warn("⚠️ No Playing event after 15s — resolving");
         resolve({ success: true });
-      }, 10000);
+      }, 15_000);
 
       this.audioPlayer!.once(AudioPlayerStatus.Playing, () => {
         clearTimeout(timeout);
+        console.log("✅ Audio is playing");
         resolve({ success: true });
       });
-
       this.audioPlayer!.once("error", (err) => {
         clearTimeout(timeout);
         reject(new Error("Audio-Fehler: " + err.message));
