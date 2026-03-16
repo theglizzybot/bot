@@ -566,6 +566,7 @@ export class DiscordBot {
         },
       ];
     }
+    sendOptions.allowedMentions = { parse: ["roles", "users", "everyone"] };
     await (channel as any).send(sendOptions);
   }
 

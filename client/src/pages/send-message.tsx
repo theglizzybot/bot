@@ -323,11 +323,15 @@ export default function SendMessagePage() {
                         />
                       </FormControl>
                       <div className="flex justify-between text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Info className="w-3 h-3" /> Tip: Use &lt;@ID&gt; for
-                          mentions
+                        <div className="flex items-center gap-1 flex-wrap gap-y-1">
+                          <Info className="w-3 h-3 shrink-0" />
+                          <span>User: <code className="bg-muted px-1 rounded">&lt;@USER_ID&gt;</code></span>
+                          <span className="text-muted-foreground/50">·</span>
+                          <span>Rolle: <code className="bg-muted px-1 rounded">&lt;@&amp;ROLLEN_ID&gt;</code></span>
+                          <span className="text-muted-foreground/50">·</span>
+                          <span>Kanal: <code className="bg-muted px-1 rounded">&lt;#KANAL_ID&gt;</code></span>
                         </div>
-                        <span>{field.value?.length || 0} / 2000</span>
+                        <span className="shrink-0">{field.value?.length || 0} / 2000</span>
                       </div>
                     </FormItem>
                   )}
