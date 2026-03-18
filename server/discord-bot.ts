@@ -154,7 +154,10 @@ export class DiscordBot {
         if (message.channelId === reactionChannelId) {
           try {
             const freshMsg = await message.fetch(true).catch(() => message);
-            for (const emojiId of ["1471991013928206469", "1472714251385835690"]) {
+            for (const emojiId of [
+              "1471991013928206469",
+              "1472714251385835690",
+            ]) {
               const alreadyReacted = freshMsg.reactions.cache.some(
                 (r) => r.emoji.id === emojiId && r.me,
               );
@@ -215,6 +218,7 @@ export class DiscordBot {
 
         const content = message.content.toLowerCase().trim();
         const greetings = [
+          // --- Deine Originale ---
           "hi",
           "hallo",
           "hello",
@@ -225,8 +229,6 @@ export class DiscordBot {
           "guten tag",
           "çau",
           "ciau",
-          "HOI",
-          "Hoi",
           "hoi",
           "你好",
           "wilkommen",
@@ -239,21 +241,123 @@ export class DiscordBot {
           "hola",
           "hallo zusammen",
           "hallo alle",
-          "Labas",
-          "Sut",
-          "Sveiki",
-          "Sveikas",
-          "Labas rytas",
-          "Labas vakaras",
-          "Sveiki atvykę",
-          "Sveiki prisijungę",
-          "Sveiki atvykę į serverį",
-          "Sveiki prisijungę prie serverio",
-          "Sveiki atvykę į serverį",
-          "Sveiki prisijungę prie serverio",
+          "labas",
+          "sut",
+          "sveiki",
+          "sveikas",
+          "labas rytas",
+          "labas vakaras",
+          "sveiki atvykę",
+          "sveiki prisijungę",
           "☆: .｡. o(≧▽≦)o .｡.:☆",
-          "Namaste bro, kaseho?",
+          "namaste bro, kaseho?",
           "नमस्ते",
+
+          // --- Europa ---
+          "hallo",
+          "servus",
+          "grüezi",
+          "moin moin",
+          "mahlzeit", // Deutsch
+          "salut",
+          "coucou",
+          "allô", // Französisch
+          "ciao",
+          "buongiorno",
+          "salve", // Italienisch
+          "¿qué tal?",
+          "buenas",
+          "buenos días", // Spanisch
+          "olá",
+          "oi",
+          "bom dia", // Portugiesisch
+          "hallo",
+          "hoi",
+          "goedendag", // Niederländisch
+          "hej",
+          "tjena",
+          "hallå", // Schwedisch
+          "hei",
+          "hallo", // Norwegisch/Dänisch
+          "terve",
+          "hei", // Finnisch
+          "cześć",
+          "dzień dobry", // Polnisch
+          "ahoj",
+          "dobrý den", // Tschechisch/Slowakisch
+          "szia",
+          "heló", // Ungarisch
+          "buna",
+          "salut", // Rumänisch
+          "geia",
+          "yassas", // Griechisch
+          "merhaba",
+          "selam", // Türkisch
+          "zdravstvuyte",
+          "privet",
+          "привет", // Russisch
+
+          // --- Asien & Pazifik ---
+          "konnichiwa",
+          "ohayou",
+          "moshi moshi",
+          "こんにちは", // Japanisch
+          "annyeong",
+          "annyeonghaseyo",
+          "안녕하세요", // Koreanisch
+          "nǐ hǎo",
+          "你好", // Mandarin
+          "nǐ hǎo ma",
+          "néih hóu", // Kantonesisch
+          "xin chào", // Vietnamesisch
+          "sawatdee", // Thailändisch
+          "kumusta", // Tagalog
+          "apa kabar", // Indonesisch/Malaiisch
+          "aloha", // Hawaiianisch
+
+          // --- Naher Osten & Afrika ---
+          "salam",
+          "as-salaam-alaikum",
+          "marhaba",
+          "السلام عليكم", // Arabisch
+          "shalom",
+          "shaloam", // Hebräisch
+          "jambo",
+          "habari", // Swahili
+          "sawubona", // Zulu
+
+          // --- Slang & Internet ---
+          "yo",
+          "sup",
+          "howdy",
+          "wassup",
+          "wazzup",
+          "zup",
+          "greetings",
+          "hiya",
+          "heyy",
+          "heyyy",
+          "re",
+          "back",
+          "wb",
+          "morning",
+          "night",
+          "evening",
+          "gn",
+          "gm",
+          "morgen",
+          "nabend",
+          "tach",
+          "yoo",
+          "bruh",
+
+          // --- "Nerd" & Fantasy ---
+          "mellon", // Elbisch (Herr der Ringe)
+          "nuqneH", // Klingonisch (Star Trek)
+          "live long and prosper",
+          "may the force be with you",
+          "hello there", // Obi-Wan Kenobi Style
+          "01001000 01101001", // "Hi" in Binär
         ];
 
         const isGreeting = greetings.some((g) => {
@@ -282,7 +386,6 @@ export class DiscordBot {
           }
           return;
         }
-
       });
 
       await this.client.login(token);
@@ -769,7 +872,9 @@ export class DiscordBot {
             `Im Entwicklungsmodus ist UDP geblockt — nur auf dem deployed Server nutzbar.`,
         );
       }
-      console.warn(`⚠️ Voice noch nicht Ready (${s}) — versuche trotzdem abzuspielen...`);
+      console.warn(
+        `⚠️ Voice noch nicht Ready (${s}) — versuche trotzdem abzuspielen...`,
+      );
     }
 
     // Build audio resource
@@ -782,7 +887,9 @@ export class DiscordBot {
       });
     } else {
       let urlType: string | false = false;
-      try { urlType = await playdl.validate(source); } catch {}
+      try {
+        urlType = await playdl.validate(source);
+      } catch {}
       console.log("🔍 URL type:", urlType, "->", source);
 
       if (urlType && urlType !== "search") {
