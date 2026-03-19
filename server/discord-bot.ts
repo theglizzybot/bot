@@ -218,150 +218,37 @@ export class DiscordBot {
 
         const content = message.content.toLowerCase().trim();
         const greetings = [
-          // --- Deine Originale ---
-          "hi",
-          "hallo",
-          "hello",
-          "hey",
-          "moin",
-          "servus",
-          "bonjour",
-          "guten tag",
-          "çau",
-          "ciau",
-          "hoi",
-          "你好",
-          "wilkommen",
-          "willkommen",
-          "welcome",
-          "hiho",
-          "heyho",
-          "namaste",
-          "helo",
-          "hola",
-          "hallo zusammen",
-          "hallo alle",
-          "labas",
-          "sut",
-          "sveiki",
-          "sveikas",
-          "labas rytas",
-          "labas vakaras",
-          "sveiki atvykę",
-          "sveiki prisijungę",
-          "☆: .｡. o(≧▽≦)o .｡.:☆",
-          "namaste bro, kaseho?",
-          "नमस्ते",
-
-          // --- Europa ---
-          "hallo",
-          "servus",
-          "grüezi",
-          "moin moin",
-          "mahlzeit", // Deutsch
-          "salut",
-          "coucou",
-          "allô", // Französisch
-          "ciao",
-          "buongiorno",
-          "salve", // Italienisch
-          "¿qué tal?",
-          "buenas",
-          "buenos días", // Spanisch
-          "olá",
-          "oi",
-          "bom dia", // Portugiesisch
-          "hallo",
-          "hoi",
-          "goedendag", // Niederländisch
-          "hej",
-          "tjena",
-          "hallå", // Schwedisch
-          "hei",
-          "hallo", // Norwegisch/Dänisch
-          "terve",
-          "hei", // Finnisch
-          "cześć",
-          "dzień dobry", // Polnisch
-          "ahoj",
-          "dobrý den", // Tschechisch/Slowakisch
-          "szia",
-          "heló", // Ungarisch
-          "buna",
-          "salut", // Rumänisch
-          "geia",
-          "yassas", // Griechisch
-          "merhaba",
-          "selam", // Türkisch
-          "zdravstvuyte",
-          "privet",
-          "привет", // Russisch
-
-          // --- Asien & Pazifik ---
-          "konnichiwa",
-          "ohayou",
-          "moshi moshi",
-          "こんにちは", // Japanisch
-          "annyeong",
-          "annyeonghaseyo",
-          "안녕하세요", // Koreanisch
-          "nǐ hǎo",
-          "你好", // Mandarin
-          "nǐ hǎo ma",
-          "néih hóu", // Kantonesisch
-          "xin chào", // Vietnamesisch
-          "sawatdee", // Thailändisch
-          "kumusta", // Tagalog
-          "apa kabar", // Indonesisch/Malaiisch
-          "aloha", // Hawaiianisch
-
-          // --- Naher Osten & Afrika ---
-          "salam",
-          "as-salaam-alaikum",
-          "marhaba",
-          "السلام عليكم", // Arabisch
-          "shalom",
-          "shaloam", // Hebräisch
-          "jambo",
-          "habari", // Swahili
-          "sawubona", // Zulu
-
-          // --- Slang & Internet ---
-          "yo",
-          "sup",
-          "howdy",
-          "wassup",
-          "wazzup",
-          "zup",
-          "greetings",
-          "hiya",
-          "heyy",
-          "heyyy",
-          "re",
-          "back",
-          "wb",
-          "morning",
-          "night",
-          "evening",
-          "gn",
-          "gm",
-          "morgen",
-          "nabend",
-          "tach",
-          "yoo",
-          "bruh",
-
-          // --- "Nerd" & Fantasy ---
-          "mellon", // Elbisch (Herr der Ringe)
-          "nuqneH", // Klingonisch (Star Trek)
-          "live long and prosper",
-          "may the force be with you",
-          "hello there", // Obi-Wan Kenobi Style
-          "01001000 01101001", // "Hi" in Binär
+          "hi", "hallo", "hello", "hey", "moin", "servus", "bonjour", "guten tag", 
+          "çau", "ciau", "hoi", "你好", "wilkommen", "willkommen", "welcome", 
+          "hiho", "heyho", "namaste", "helo", "hola", "hallo zusammen", "hallo alle", 
+          "labas", "sut", "sveiki", "sveikas", "labas rytas", "labas vakaras", 
+          "sveiki atvykę", "sveiki prisijungę", "☆: .｡. o(≧▽≦)o .｡.:☆",
+          "namaste bro, kaseho?", "नमस्ते", "grüezi", "moin moin", "mahlzeit", 
+          "salut", "coucou", "allô", "ciao", "buongiorno", "salve", "¿qué tal?", 
+          "buenas", "buenos días", "olá", "oi", "bom dia", "goedendag", "hej", 
+          "tjena", "hallå", "hei", "terve", "cześć", "dzień dobry", "ahoj", 
+          "dobrý den", "szia", "heló", "buna", "geia", "yassas", "merhaba", 
+          "selam", "zdravstvuyte", "privet", "привет", "konnichiwa", "ohayou", 
+          "moshi moshi", "こんにちは", "annyeong", "annyeonghaseyo", "안녕하세요", 
+          "nǐ hǎo", "nǐ hǎo ma", "néih hóu", "xin chào", "sawatdee", "kumusta", 
+          "apa kabar", "aloha", "salam", "as-salaam-alaikum", "marhaba", 
+          "السلام عليكم", "shalom", "shaloam", "jambo", "habari", "sawubona", 
+          "yo", "sup", "howdy", "wassup", "wazzup", "zup", "greetings", "hiya", 
+          "heyy", "heyyy", "re", "back", "wb", "morning", "night", "evening", 
+          "gn", "gm", "morgen", "nabend", "tach", "yoo", "bruh", "mellon", 
+          "nuqneH", "live long and prosper", "may the force be with you", 
+          "hello there", "01001000 01101001"
         ];
 
         const isGreeting = greetings.some((g) => {
-          const regex = new RegExp(`^${g}\\b`, "i");
+          if (g.includes("☆") || g.match(/^[01 ]+$/)) {
+            return content.startsWith(g.toLowerCase());
+          }
+          const flexiblePattern = g
+            .split('')
+            .map(char => /[a-zA-Z]/.test(char) ? `${char.toLowerCase()}+` : `\\${char}`)
+            .join('');
+          const regex = new RegExp(`^${flexiblePattern}\\b`, "i");
           return regex.test(content);
         });
 
@@ -376,17 +263,14 @@ export class DiscordBot {
           }
 
           try {
-            // Check if we already replied to a greeting in this message event
             if ((message as any)._greetingReplied) return;
             (message as any)._greetingReplied = true;
-
             await message.reply(`Hello, ${message.author}`);
           } catch (error) {
             console.error("❌ Error replying to greeting:", error);
           }
           return;
         }
-      });
 
       await this.client.login(token);
     } catch (error) {
