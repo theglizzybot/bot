@@ -35,16 +35,12 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 const getStatusColor = (status: string) => {
   switch (status) {
     case "New":
-    case "Neu":
       return "bg-blue-500 text-white";
     case "Pending":
-    case "In Bearbeitung":
       return "bg-yellow-500 text-white";
     case "Accepted":
-    case "Angenommen":
       return "bg-green-500 text-white";
     case "Rejected":
-    case "Abgelehnt":
       return "bg-red-500 text-white";
     default:
       return "bg-muted text-muted-foreground";
@@ -67,16 +63,13 @@ export default function Applications() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
-      toast({ title: "Erfolg", description: "Bewerbung erfolgreich gelöscht." });
+      toast({ title: "Success", description: "Application deleted successfully." });
       setApplicationToDelete(null);
-      if (selectedApplication?.id === applicationToDelete?.id) {
-        setSelectedApplication(null);
-      }
     },
     onError: (error: any) => {
       toast({
-        title: "Fehler",
-        description: error.message || "Bewerbung konnte nicht gelöscht werden.",
+        title: "Error",
+        description: error.message || "Could not delete application.",
         variant: "destructive",
       });
     },
@@ -88,13 +81,13 @@ export default function Applications() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
-      toast({ title: "Erfolg", description: "Status aktualisiert." });
+      toast({ title: "Success", description: "Status updated." });
       setSelectedApplication(null);
     },
     onError: (error: any) => {
       toast({
-        title: "Fehler",
-        description: error.message || "Status konnte nicht aktualisiert werden.",
+        title: "Error",
+        description: error.message || "Could not update status.",
         variant: "destructive",
       });
     },
@@ -109,23 +102,23 @@ export default function Applications() {
     <div className="flex-1 overflow-auto p-6">
       <div className="max-w-7xl mx-auto space-y-8">
         <div>
-          <h1 className="text-2xl font-bold mb-2">Bewerbungen</h1>
+          <h1 className="text-2xl font-bold mb-2">Applications</h1>
           <p className="text-sm text-muted-foreground">
-            Server-Bewerbungen überprüfen und verwalten
+            Review and manage server applications
           </p>
         </div>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
             <div>
-              <CardTitle>Übersicht</CardTitle>
+              <CardTitle>Overview</CardTitle>
               <CardDescription>
-                {filteredApplications.length} Bewerbungen gefunden
+                {filteredApplications.length} application{filteredApplications.length !== 1 ? "s" : ""} found
               </CardDescription>
             </div>
             <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
               <TabsList>
-                <TabsTrigger value="All">Alle</TabsTrigger>
+                <TabsTrigger value="All">All</TabsTrigger>
                 <TabsTrigger value="Admin">Admin</TabsTrigger>
                 <TabsTrigger value="Member">Member</TabsTrigger>
               </TabsList>
@@ -139,7 +132,7 @@ export default function Applications() {
             ) : filteredApplications.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>Keine Bewerbungen vorhanden</p>
+                <p>No applications found</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -155,15 +148,15 @@ export default function Applications() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap gap-2 mb-1 items-center">
-                        <span className="font-medium truncate" data-testid={`text-applicant-${app.id}`}>{app.discordName}</span>
+                        <span className="font-medium truncate" data-testid={`text-applicant-${app.id}`}>
+                          {app.discordName}
+                        </span>
                         <Badge variant="outline">{app.category}</Badge>
-                        <Badge className={getStatusColor(app.status)}>
-                          {app.status}
-                        </Badge>
+                        <Badge className={getStatusColor(app.status)}>{app.status}</Badge>
                       </div>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Calendar className="w-3 h-3" />
-                        {new Date(app.timestamp).toLocaleDateString("de-DE")}
+                        {new Date(app.timestamp).toLocaleDateString("en-US")}
                       </div>
                     </div>
                     <div className="flex gap-2 shrink-0">
@@ -176,7 +169,7 @@ export default function Applications() {
                         }}
                         data-testid={`button-view-${app.id}`}
                       >
-                        Ansehen
+                        View
                       </Button>
                       <Button
                         variant="ghost"
@@ -202,9 +195,9 @@ export default function Applications() {
       <Dialog open={!!selectedApplication} onOpenChange={() => setSelectedApplication(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Bewerbungsdetails</DialogTitle>
+            <DialogTitle>Application Details</DialogTitle>
             <DialogDescription>
-              Eingereicht von {selectedApplication?.discordName}
+              Submitted by {selectedApplication?.discordName}
             </DialogDescription>
           </DialogHeader>
           {selectedApplication && (
@@ -215,7 +208,7 @@ export default function Applications() {
                   <p className="font-mono text-xs mt-1">{selectedApplication.discordId}</p>
                 </div>
                 <div>
-                  <p className="font-semibold text-muted-foreground">Kategorie</p>
+                  <p className="font-semibold text-muted-foreground">Category</p>
                   <Badge className="mt-1">{selectedApplication.category}</Badge>
                 </div>
                 <div>
@@ -225,12 +218,14 @@ export default function Applications() {
                   </Badge>
                 </div>
                 <div>
-                  <p className="font-semibold text-muted-foreground">Datum</p>
-                  <p className="text-xs mt-1">{new Date(selectedApplication.timestamp).toLocaleDateString("de-DE")}</p>
+                  <p className="font-semibold text-muted-foreground">Date</p>
+                  <p className="text-xs mt-1">
+                    {new Date(selectedApplication.timestamp).toLocaleDateString("en-US")}
+                  </p>
                 </div>
               </div>
               <div>
-                <p className="font-semibold text-muted-foreground mb-2">Bewerbungsinhalt</p>
+                <p className="font-semibold text-muted-foreground mb-2">Application Content</p>
                 <div className="p-4 bg-muted rounded-md text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
                   {selectedApplication.content}
                 </div>
@@ -240,31 +235,31 @@ export default function Applications() {
                   size="sm"
                   variant="outline"
                   className="text-green-600"
-                  onClick={() => updateStatusMutation.mutate({ id: selectedApplication.id, status: "Angenommen" })}
+                  onClick={() => updateStatusMutation.mutate({ id: selectedApplication.id, status: "Accepted" })}
                   disabled={updateStatusMutation.isPending}
                   data-testid="button-accept-application"
                 >
-                  Annehmen
+                  Accept
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   className="text-yellow-600"
-                  onClick={() => updateStatusMutation.mutate({ id: selectedApplication.id, status: "In Bearbeitung" })}
+                  onClick={() => updateStatusMutation.mutate({ id: selectedApplication.id, status: "Pending" })}
                   disabled={updateStatusMutation.isPending}
                   data-testid="button-pending-application"
                 >
-                  In Bearbeitung
+                  Set Pending
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   className="text-red-600"
-                  onClick={() => updateStatusMutation.mutate({ id: selectedApplication.id, status: "Abgelehnt" })}
+                  onClick={() => updateStatusMutation.mutate({ id: selectedApplication.id, status: "Rejected" })}
                   disabled={updateStatusMutation.isPending}
                   data-testid="button-reject-application"
                 >
-                  Ablehnen
+                  Reject
                 </Button>
                 <Button
                   size="sm"
@@ -276,7 +271,7 @@ export default function Applications() {
                   }}
                   data-testid="button-delete-from-dialog"
                 >
-                  <Trash2 className="w-4 h-4 mr-1" /> Löschen
+                  <Trash2 className="w-4 h-4 mr-1" /> Delete
                 </Button>
               </div>
             </div>
@@ -288,13 +283,13 @@ export default function Applications() {
       <AlertDialog open={!!applicationToDelete} onOpenChange={() => setApplicationToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bewerbung löschen?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Application?</AlertDialogTitle>
             <AlertDialogDescription>
-              Die Bewerbung von <strong>{applicationToDelete?.discordName}</strong> wird unwiderruflich gelöscht.
+              The application from <strong>{applicationToDelete?.discordName}</strong> will be permanently deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-delete">Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => applicationToDelete && deleteApplicationMutation.mutate(applicationToDelete.id)}
               className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
@@ -303,7 +298,7 @@ export default function Applications() {
               {deleteApplicationMutation.isPending ? (
                 <Loader2 className="animate-spin w-4 h-4" />
               ) : (
-                "Löschen"
+                "Delete"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

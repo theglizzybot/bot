@@ -30,7 +30,7 @@ export class MemStorage implements IStorage {
       ...insertApplication,
       id,
       timestamp: new Date(),
-      status: "Neu",
+      status: "New",
     };
     this.applications.set(id, application);
     return application;

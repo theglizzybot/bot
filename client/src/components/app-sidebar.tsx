@@ -1,4 +1,4 @@
-import { Home, Server, Send, FileText, Languages } from "lucide-react";
+import { Home, Server, Send, FileText } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -12,28 +12,23 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { useTranslation } from "react-i18next"; // Wichtig!
-import { Button } from "@/components/ui/button";
+
+const menuItems = [
+  { title: "Dashboard", url: "/", icon: Home },
+  { title: "Servers", url: "/servers", icon: Server },
+  { title: "Send Message", url: "/send-message", icon: Send },
+  { title: "Applications", url: "/applications", icon: FileText },
+];
 
 export function AppSidebar() {
   const [location] = useLocation();
-  const { i18n } = useTranslation(); // Wir brauchen das Objekt, auch wenn wir t() nicht nutzen
-
-  const menuItems = [
-    { title: "Dashboard", url: "/", icon: Home },
-    { title: "Servers", url: "/servers", icon: Server },
-    { title: "Send Message", url: "/send-message", icon: Send },
-    { title: "Applications", url: "/applications", icon: FileText },
-  ];
 
   return (
     <Sidebar>
       <SidebarHeader className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-md bg-primary flex items-center justify-center">
-            <span className="text-lg font-bold text-primary-foreground">
-              EA
-            </span>
+            <span className="text-lg font-bold text-primary-foreground">EA</span>
           </div>
           <div>
             <h2 className="text-sm font-bold">Minecraft Bot</h2>

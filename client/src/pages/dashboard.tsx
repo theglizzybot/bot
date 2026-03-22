@@ -33,43 +33,33 @@ import type { BotStatus } from "@shared/schema";
 export default function Dashboard() {
   const { toast } = useToast();
 
-  // States für Voice Join
   const [targetChannelId, setTargetChannelId] = useState("1471577369440686429");
-
-  // States für Audio
   const [audioChannelId, setAudioChannelId] = useState("1471577369440686429");
   const [audioUrl, setAudioUrl] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // States für Reaktionen
   const [reactChannelId, setReactChannelId] = useState("");
   const [reactMessageId, setReactMessageId] = useState("");
-  const [reactEmoji, setReactEmoji] = useState(
-    "<:music_disc:1471990618828837139>",
-  );
+  const [reactEmoji, setReactEmoji] = useState("<:music_disc:1471990618828837139>");
 
   const { data: botStatus, isLoading } = useQuery<BotStatus>({
     queryKey: ["/api/bot/status"],
   });
 
-  // Mutation für Voice Join
   const joinVoiceMutation = useMutation({
     mutationFn: async (channelId: string) => {
-      const res = await apiRequest("POST", "/api/discord/voice/join", {
-        channelId,
-      });
+      const res = await apiRequest("POST", "/api/discord/voice/join", { channelId });
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Erfolg", description: "Bot ist dem Sprachkanal beigetreten." });
+      toast({ title: "Success", description: "Bot joined the voice channel." });
     },
     onError: (error: Error) => {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
-  // Mutation: Audio via URL abspielen
   const playUrlMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/discord/voice/play-url", {
@@ -79,17 +69,16 @@ export default function Dashboard() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Audio gestartet", description: "Der Bot spielt jetzt Audio ab." });
+      toast({ title: "Audio started", description: "The bot is now playing audio." });
     },
     onError: (error: Error) => {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
-  // Mutation: Audio via Datei abspielen
   const playFileMutation = useMutation({
     mutationFn: async () => {
-      if (!audioFile) throw new Error("Keine Datei ausgewählt");
+      if (!audioFile) throw new Error("No file selected");
       const formData = new FormData();
       formData.append("channelId", audioChannelId);
       formData.append("audio", audioFile);
@@ -99,35 +88,33 @@ export default function Dashboard() {
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.message || "Upload fehlgeschlagen");
+        throw new Error(err.message || "Upload failed");
       }
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Audio gestartet", description: "Datei wird im Sprachkanal abgespielt." });
+      toast({ title: "Audio started", description: "File is playing in the voice channel." });
       setAudioFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     },
     onError: (error: Error) => {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
-  // Mutation: Audio stoppen
   const stopAudioMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/discord/voice/stop", {});
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Audio gestoppt", description: "Die Wiedergabe wurde beendet." });
+      toast({ title: "Audio stopped", description: "Playback has ended." });
     },
     onError: (error: Error) => {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
-  // Mutation für Reaktionen
   const addReactionMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/discord/messages/react", {
@@ -138,10 +125,10 @@ export default function Dashboard() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Reaktion gesendet", description: "Das Emoji wurde erfolgreich hinzugefügt." });
+      toast({ title: "Reaction sent", description: "Emoji added successfully." });
     },
     onError: (error: Error) => {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -232,12 +219,12 @@ export default function Dashboard() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-              {/* Sprachchat Steuerung */}
+              {/* Voice Control */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Sprachchat Steuerung</CardTitle>
+                  <CardTitle>Voice Control</CardTitle>
                   <CardDescription>
-                    Gib eine Channel ID ein, um den Bot zu verbinden
+                    Enter a channel ID to connect the bot
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -262,17 +249,17 @@ export default function Dashboard() {
                     ) : (
                       <Volume2 className="w-4 h-4" />
                     )}
-                    Sprachkanal beitreten
+                    Join Voice Channel
                   </Button>
                 </CardContent>
               </Card>
 
-              {/* Reaktions-Steuerung */}
+              {/* Reaction Control */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Reaktions-Steuerung</CardTitle>
+                  <CardTitle>Reaction Control</CardTitle>
                   <CardDescription>
-                    Lasse den Bot auf eine bestimmte Nachricht reagieren
+                    Make the bot react to a specific message
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -301,7 +288,7 @@ export default function Dashboard() {
                       <SmilePlus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         data-testid="input-react-emoji"
-                        placeholder="Emoji (z.B. <:name:id>)"
+                        placeholder="Emoji (e.g. <:name:id>)"
                         value={reactEmoji}
                         onChange={(e) => setReactEmoji(e.target.value)}
                         className="pl-9"
@@ -323,25 +310,25 @@ export default function Dashboard() {
                     ) : (
                       <SmilePlus className="w-4 h-4" />
                     )}
-                    Emoji hinzufügen
+                    Add Reaction
                   </Button>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Audio Wiedergabe */}
+            {/* Audio Playback */}
             <Card>
               <CardHeader>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <Music className="w-5 h-5" />
-                      Audio Wiedergabe
+                      Audio Playback
                     </CardTitle>
                     <CardDescription className="mt-1">
-                      Spiele Audio im Sprachkanal ab – per URL oder Datei-Upload.{" "}
+                      Play audio in a voice channel via URL or file upload.{" "}
                       <span className="text-yellow-500 font-medium">
-                        Funktioniert nur auf dem deployed Server (nicht im Entwicklungsmodus).
+                        Only works on the deployed server (not in development mode).
                       </span>
                     </CardDescription>
                   </div>
@@ -357,7 +344,7 @@ export default function Dashboard() {
                     ) : (
                       <StopCircle className="w-4 h-4" />
                     )}
-                    Stopp
+                    Stop
                   </Button>
                 </div>
               </CardHeader>
@@ -381,14 +368,14 @@ export default function Dashboard() {
                     </TabsTrigger>
                     <TabsTrigger value="file" className="flex-1 gap-2">
                       <Upload className="w-4 h-4" />
-                      Datei-Upload
+                      File Upload
                     </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="url" className="space-y-3 pt-3">
                     <div className="space-y-1">
                       <Label className="text-sm text-muted-foreground">
-                        YouTube, SoundCloud oder direkte Audio-URL (mp3, ogg, wav …)
+                        YouTube, SoundCloud or direct audio URL (mp3, ogg, wav …)
                       </Label>
                       <div className="relative">
                         <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -412,14 +399,14 @@ export default function Dashboard() {
                       ) : (
                         <Music className="w-4 h-4" />
                       )}
-                      URL abspielen
+                      Play URL
                     </Button>
                   </TabsContent>
 
                   <TabsContent value="file" className="space-y-3 pt-3">
                     <div className="space-y-1">
                       <Label className="text-sm text-muted-foreground">
-                        Audiodatei hochladen (mp3, ogg, wav, flac, m4a, webm · max. 50 MB)
+                        Upload audio file (mp3, ogg, wav, flac, m4a, webm · max 50 MB)
                       </Label>
                       <Input
                         data-testid="input-audio-file"
@@ -431,7 +418,7 @@ export default function Dashboard() {
                     </div>
                     {audioFile && (
                       <p className="text-xs text-muted-foreground">
-                        Ausgewählt: <span className="font-medium text-foreground">{audioFile.name}</span>{" "}
+                        Selected: <span className="font-medium text-foreground">{audioFile.name}</span>{" "}
                         ({(audioFile.size / 1024 / 1024).toFixed(2)} MB)
                       </p>
                     )}
@@ -446,7 +433,7 @@ export default function Dashboard() {
                       ) : (
                         <Upload className="w-4 h-4" />
                       )}
-                      Datei abspielen
+                      Play File
                     </Button>
                   </TabsContent>
                 </Tabs>

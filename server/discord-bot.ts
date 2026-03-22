@@ -144,7 +144,9 @@ export class DiscordBot {
         try {
           const guild = member.guild;
           // Find a system channel or first available text channel
+          const WELCOME_CHANNEL_ID = "1483495498470920406";
           const welcomeChannel =
+            guild.channels.cache.get(WELCOME_CHANNEL_ID) ||
             guild.systemChannel ||
             guild.channels.cache.find(
               (ch: any) =>
@@ -157,9 +159,9 @@ export class DiscordBot {
           if (welcomeChannel && "send" in welcomeChannel) {
             const welcomeEmbed = new EmbedBuilder()
               .setColor(0xd32f2f)
-              .setTitle("Willkommen auf dem Server!")
+              .setTitle("Welcome to the server!")
               .setDescription(
-                `Herzlich willkommen, ${member}! Wir freuen uns, dich dabei zu haben. Schau dich gerne um und hab Spaß!`,
+                `Welcome, ${member}! We're glad to have you here. Feel free to look around and have fun!`,
               )
               .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
               .setFooter({ text: guild.name, iconURL: guild.iconURL() ?? undefined })
@@ -168,7 +170,7 @@ export class DiscordBot {
             await (welcomeChannel as any).send({ embeds: [welcomeEmbed] });
           }
         } catch (error) {
-          console.error("❌ Fehler beim Senden der Willkommensnachricht:", error);
+          console.error("❌ Error sending welcome message:", error);
         }
       });
 

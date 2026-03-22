@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Hash, Volume2, Megaphone, Server as ServerIcon, Loader2, UserPlus, ExternalLink } from "lucide-react";
+import { Hash, Volume2, Megaphone, Server as ServerIcon, Loader2, UserPlus } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { DiscordServer } from "@shared/schema";
@@ -15,11 +15,11 @@ import {
 
 const getChannelIcon = (type: number) => {
   switch (type) {
-    case 0: // Text channel
+    case 0:
       return <Hash className="w-4 h-4 text-muted-foreground" />;
-    case 2: // Voice channel
+    case 2:
       return <Volume2 className="w-4 h-4 text-muted-foreground" />;
-    case 5: // Announcement channel
+    case 5:
       return <Megaphone className="w-4 h-4 text-muted-foreground" />;
     default:
       return <Hash className="w-4 h-4 text-muted-foreground" />;
@@ -33,9 +33,9 @@ const getChannelTypeName = (type: number) => {
     case 2:
       return "Voice";
     case 5:
-      return "Ankündigung";
+      return "Announcement";
     default:
-      return "Unbekannt";
+      return "Unknown";
   }
 };
 
@@ -53,13 +53,13 @@ export default function Servers() {
     onSuccess: (data) => {
       window.open(data.inviteUrl, "_blank");
       toast({
-        title: "Einladung erstellt",
-        description: "Der Einladungslink wurde in einem neuen Tab geöffnet.",
+        title: "Invite created",
+        description: "The invite link was opened in a new tab.",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Fehler",
+        title: "Error",
         description: error.message,
         variant: "destructive",
       });
@@ -70,9 +70,9 @@ export default function Servers() {
     <div className="flex-1 overflow-auto">
       <div className="max-w-7xl mx-auto p-6 space-y-8">
         <div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Server & Kanäle</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Servers & Channels</h1>
           <p className="text-sm text-muted-foreground">
-            Übersicht aller Discord-Server auf denen der Bot aktiv ist
+            Overview of all Discord servers the bot is active on
           </p>
         </div>
 
@@ -87,7 +87,7 @@ export default function Servers() {
             <CardContent className="flex flex-col items-center justify-center py-12">
               <ServerIcon className="w-12 h-12 text-muted-foreground mb-4" />
               <p className="text-sm text-muted-foreground">
-                Keine Server gefunden. Der Bot ist noch mit keinem Server verbunden.
+                No servers found. The bot is not connected to any server yet.
               </p>
             </CardContent>
           </Card>
@@ -96,7 +96,7 @@ export default function Servers() {
             {servers.map((server) => (
               <Card key={server.id} data-testid={`card-server-${server.id}`}>
                 <CardHeader>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-wrap">
                     {server.icon ? (
                       <img
                         src={`https://cdn.discordapp.com/icons/${server.id}/${server.icon}.png`}
@@ -113,7 +113,7 @@ export default function Servers() {
                         {server.name}
                       </CardTitle>
                       <CardDescription>
-                        {server.channels.length} Kanäle verfügbar
+                        {server.channels.length} channels available
                       </CardDescription>
                     </div>
                     <Badge variant="secondary" data-testid={`badge-server-id-${server.id}`}>
@@ -132,18 +132,18 @@ export default function Servers() {
                       ) : (
                         <UserPlus className="w-4 h-4" />
                       )}
-                      Einladung erstellen
+                      Create Invite
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="channels" className="border-0">
-                      <AccordionTrigger 
+                      <AccordionTrigger
                         className="text-sm font-medium hover:no-underline py-2"
                         data-testid={`accordion-channels-${server.id}`}
                       >
-                        Kanäle anzeigen ({server.channels.length})
+                        Show channels ({server.channels.length})
                       </AccordionTrigger>
                       <AccordionContent>
                         <div className="space-y-2 pt-2">

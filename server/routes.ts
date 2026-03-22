@@ -13,17 +13,16 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const upload = multer({
   dest: uploadDir,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = [".mp3", ".ogg", ".wav", ".flac", ".m4a", ".webm"];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowed.includes(ext)) cb(null, true);
-    else cb(new Error("Nur Audio-Dateien erlaubt (mp3, ogg, wav, flac, m4a, webm)"));
+    else cb(new Error("Only audio files allowed (mp3, ogg, wav, flac, m4a, webm)"));
   },
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Bot-Status abrufen
   app.get("/api/bot/status", async (req, res) => {
     try {
       const status = discordBot.getStatus();
@@ -33,11 +32,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Discord-Server und Kanäle abrufen
   app.get("/api/discord/servers", async (req, res) => {
     try {
       if (!discordBot.isReady())
-        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+        return res.status(503).json({ message: "Bot is not ready yet" });
       const servers = discordBot.getServers();
       res.json(servers);
     } catch (error: any) {
@@ -45,14 +43,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Nachricht als DM senden
   app.post("/api/discord/send-dm", async (req, res) => {
     try {
       const { userId, content, embed } = req.body;
       if (!userId || !content)
-        return res.status(400).json({ message: "Daten fehlen" });
+        return res.status(400).json({ message: "Missing required fields" });
       if (!discordBot.isReady())
-        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+        return res.status(503).json({ message: "Bot is not ready yet" });
       await discordBot.sendDirectMessage(userId, { content, embed });
       res.json({ success: true });
     } catch (error: any) {
@@ -60,12 +57,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Nachricht an Kanal senden
   app.post("/api/discord/send-message", async (req, res) => {
     try {
       const validated = sendMessageSchema.parse(req.body);
       if (!discordBot.isReady())
-        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+        return res.status(503).json({ message: "Bot is not ready yet" });
 
       let embedOptions: any = undefined;
       if (validated.embed) {
@@ -76,8 +72,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           color: e.color,
           thumbnail: e.thumbnail || undefined,
           image: e.image || undefined,
-          author: e.authorName ? { name: e.authorName, url: e.authorUrl || undefined, iconUrl: e.authorIconUrl || undefined } : undefined,
-          footer: e.footerText ? { text: e.footerText, iconUrl: e.footerIconUrl || undefined } : undefined,
+          author: e.authorName
+            ? { name: e.authorName, url: e.authorUrl || undefined, iconUrl: e.authorIconUrl || undefined }
+            : undefined,
+          footer: e.footerText
+            ? { text: e.footerText, iconUrl: e.footerIconUrl || undefined }
+            : undefined,
           timestamp: e.timestamp,
           fields: e.fields,
         };
@@ -94,26 +94,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // --- NEUER ENDPUNKT: REAKTION HINZUFÜGEN ---
   app.post("/api/discord/messages/react", async (req, res) => {
     try {
       const { channelId, messageId, emoji } = req.body;
       if (!channelId || !messageId || !emoji) {
-        return res
-          .status(400)
-          .json({ message: "Channel-ID, Message-ID und Emoji erforderlich" });
+        return res.status(400).json({ message: "Channel ID, Message ID and Emoji are required" });
       }
       if (!discordBot.isReady())
-        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+        return res.status(503).json({ message: "Bot is not ready yet" });
 
       await discordBot.addReaction(channelId, messageId, emoji);
-      res.json({ success: true, message: "Reaktion hinzugefügt" });
+      res.json({ success: true, message: "Reaction added" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
   });
 
-  // Bewerbungen
   app.get("/api/applications", async (req, res) => {
     try {
       const apps = await storage.getApplications();
@@ -148,14 +144,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/applications/:id", async (req, res) => {
     try {
       const deleted = await storage.deleteApplication(req.params.id);
-      if (!deleted) return res.status(404).json({ message: "Bewerbung nicht gefunden" });
+      if (!deleted) return res.status(404).json({ message: "Application not found" });
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
   });
 
-  // Einladungen
   app.post("/api/discord/servers/:id/invite", async (req, res) => {
     try {
       const inviteUrl = await discordBot.createInvite(req.params.id);
@@ -165,23 +160,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Nachricht löschen
-  app.delete(
-    "/api/discord/messages/:channelId/:messageId",
-    async (req, res) => {
-      try {
-        await discordBot.deleteMessage(
-          req.params.channelId,
-          req.params.messageId,
-        );
-        res.json({ success: true });
-      } catch (error: any) {
-        res.status(500).json({ message: error.message });
-      }
-    },
-  );
+  app.delete("/api/discord/messages/:channelId/:messageId", async (req, res) => {
+    try {
+      await discordBot.deleteMessage(req.params.channelId, req.params.messageId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
 
-  // Voice join
   app.post("/api/discord/voice/join", async (req, res) => {
     try {
       await discordBot.joinVoice(req.body.channelId);
@@ -191,14 +178,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Audio abspielen via URL
   app.post("/api/discord/voice/play-url", async (req, res) => {
     try {
       const { channelId, url } = req.body;
       if (!channelId || !url)
-        return res.status(400).json({ message: "channelId und url erforderlich" });
+        return res.status(400).json({ message: "channelId and url are required" });
       if (!discordBot.isReady())
-        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+        return res.status(503).json({ message: "Bot is not ready yet" });
       await discordBot.playAudio(channelId, url, false);
       res.json({ success: true });
     } catch (error: any) {
@@ -206,18 +192,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Audio abspielen via Datei-Upload
   app.post("/api/discord/voice/play-file", upload.single("audio"), async (req, res) => {
     try {
       const { channelId } = req.body;
       if (!channelId || !req.file)
-        return res.status(400).json({ message: "channelId und Audiodatei erforderlich" });
+        return res.status(400).json({ message: "channelId and audio file are required" });
       if (!discordBot.isReady())
-        return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+        return res.status(503).json({ message: "Bot is not ready yet" });
 
       await discordBot.playAudio(channelId, req.file.path, true);
 
-      // Clean up uploaded file after playback starts
       setTimeout(() => {
         try { fs.unlinkSync(req.file!.path); } catch {}
       }, 30000);
@@ -229,7 +213,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Audio stoppen
   app.post("/api/discord/voice/stop", async (_req, res) => {
     try {
       const result = discordBot.stopAudio();

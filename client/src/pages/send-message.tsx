@@ -31,23 +31,14 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Send,
-  Loader2,
-  Info,
-  User,
-  Hash,
-  Trash2,
-  Plus,
-  X,
-} from "lucide-react";
+import { Send, Loader2, Info, User, Hash, Trash2, Plus, X } from "lucide-react";
 import type { DiscordServer } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { z } from "zod";
 
 const fieldSchema = z.object({
-  name: z.string().min(1, "Name erforderlich"),
-  value: z.string().min(1, "Wert erforderlich"),
+  name: z.string().min(1, "Field name required"),
+  value: z.string().min(1, "Field value required"),
   inline: z.boolean().default(false),
 });
 
@@ -57,7 +48,7 @@ const formSchema = z.object({
   channelId: z.string().optional(),
   userId: z.string().optional(),
   replyTo: z.string().optional(),
-  content: z.string().max(2000, "Nachricht ist zu lang").optional(),
+  content: z.string().max(2000, "Message is too long").optional(),
   useEmbed: z.boolean().default(false),
   embedTitle: z.string().optional(),
   embedDescription: z.string().optional(),
@@ -121,9 +112,7 @@ export default function SendMessagePage() {
   const sendMessageMutation = useMutation({
     mutationFn: async (data: FormValues) => {
       const endpoint =
-        data.type === "dm"
-          ? "/api/discord/send-dm"
-          : "/api/discord/send-message";
+        data.type === "dm" ? "/api/discord/send-dm" : "/api/discord/send-message";
 
       const payload: any = {
         content: data.content || undefined,
@@ -153,13 +142,13 @@ export default function SendMessagePage() {
       return await apiRequest("POST", endpoint, payload);
     },
     onSuccess: () => {
-      toast({ title: "Erfolg", description: "Nachricht erfolgreich gesendet!" });
+      toast({ title: "Success", description: "Message sent successfully!" });
       form.reset({ ...form.getValues(), content: "", embedTitle: "", embedDescription: "", embedFields: [] });
     },
     onError: (error: any) => {
       toast({
-        title: "Fehler",
-        description: error.message || "Nachricht konnte nicht gesendet werden.",
+        title: "Error",
+        description: error.message || "Failed to send message.",
         variant: "destructive",
       });
     },
@@ -168,21 +157,18 @@ export default function SendMessagePage() {
   const deleteMessageMutation = useMutation({
     mutationFn: async () => {
       if (!deleteChannelId || !deleteMessageId)
-        throw new Error("Channel-ID und Nachrichten-ID erforderlich");
-      return await apiRequest(
-        "DELETE",
-        `/api/discord/messages/${deleteChannelId}/${deleteMessageId}`,
-      );
+        throw new Error("Channel ID and Message ID are required");
+      return await apiRequest("DELETE", `/api/discord/messages/${deleteChannelId}/${deleteMessageId}`);
     },
     onSuccess: () => {
-      toast({ title: "Erfolg", description: "Nachricht erfolgreich gelöscht!" });
+      toast({ title: "Success", description: "Message deleted successfully!" });
       setDeleteChannelId("");
       setDeleteMessageId("");
     },
     onError: (error: any) => {
       toast({
-        title: "Fehler",
-        description: error.message || "Nachricht konnte nicht gelöscht werden.",
+        title: "Error",
+        description: error.message || "Failed to delete message.",
         variant: "destructive",
       });
     },
@@ -196,16 +182,16 @@ export default function SendMessagePage() {
     <div className="h-full overflow-y-auto p-6">
       <div className="max-w-4xl mx-auto space-y-8">
         <div>
-          <h1 className="text-2xl font-bold">Nachricht senden</h1>
+          <h1 className="text-2xl font-bold">Send Message</h1>
           <p className="text-sm text-muted-foreground">
-            An Kanäle senden oder Direktnachrichten versenden
+            Broadcast to channels or send direct messages
           </p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Nachrichten-Composer</CardTitle>
-            <CardDescription>Ziel auswählen und Nachricht verfassen</CardDescription>
+            <CardTitle>Message Composer</CardTitle>
+            <CardDescription>Select your destination and craft your message</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -220,9 +206,9 @@ export default function SendMessagePage() {
                   render={({ field }) => (
                     <FormItem className="flex items-center justify-between rounded-lg border p-4 bg-muted/20">
                       <div className="space-y-0.5">
-                        <FormLabel>Ziel</FormLabel>
+                        <FormLabel>Destination</FormLabel>
                         <FormDescription>
-                          {field.value === "channel" ? "An einen Server-Kanal senden" : "Direktnachricht senden"}
+                          {field.value === "channel" ? "Sending to a server channel" : "Sending a direct message"}
                         </FormDescription>
                       </div>
                       <div className="flex gap-2">
@@ -233,7 +219,7 @@ export default function SendMessagePage() {
                           size="sm"
                           data-testid="button-type-channel"
                         >
-                          <Hash className="w-4 h-4 mr-1" /> Kanal
+                          <Hash className="w-4 h-4 mr-1" /> Channel
                         </Button>
                         <Button
                           type="button"
@@ -269,7 +255,7 @@ export default function SendMessagePage() {
                             >
                               <FormControl>
                                 <SelectTrigger data-testid="select-server">
-                                  <SelectValue placeholder="Server auswählen" />
+                                  <SelectValue placeholder="Select server" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -288,11 +274,11 @@ export default function SendMessagePage() {
                         name="channelId"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Kanal</FormLabel>
+                            <FormLabel>Channel</FormLabel>
                             <Select onValueChange={field.onChange} disabled={!selectedServer}>
                               <FormControl>
                                 <SelectTrigger data-testid="select-channel">
-                                  <SelectValue placeholder="Kanal auswählen" />
+                                  <SelectValue placeholder="Select channel" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -312,9 +298,9 @@ export default function SendMessagePage() {
                       name="replyTo"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Antwort auf Nachrichten-ID (Optional)</FormLabel>
+                          <FormLabel>Reply to Message ID (Optional)</FormLabel>
                           <FormControl>
-                            <Input placeholder="z.B. 123456789012345678" {...field} data-testid="input-reply-to" />
+                            <Input placeholder="e.g. 123456789012345678" {...field} data-testid="input-reply-to" />
                           </FormControl>
                         </FormItem>
                       )}
@@ -326,11 +312,11 @@ export default function SendMessagePage() {
                     name="userId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Discord-User-ID</FormLabel>
+                        <FormLabel>Discord User ID</FormLabel>
                         <FormControl>
-                          <Input placeholder="z.B. 123456789012345678" {...field} data-testid="input-user-id" />
+                          <Input placeholder="e.g. 123456789012345678" {...field} data-testid="input-user-id" />
                         </FormControl>
-                        <FormDescription>Der Bot muss den Nutzer auf einem gemeinsamen Server kennen.</FormDescription>
+                        <FormDescription>The bot must share a server with the user.</FormDescription>
                       </FormItem>
                     )}
                   />
@@ -342,10 +328,10 @@ export default function SendMessagePage() {
                   name="content"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nachrichtentext</FormLabel>
+                      <FormLabel>Message Content</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Nachricht eingeben..."
+                          placeholder="Type your message here..."
                           rows={4}
                           {...field}
                           data-testid="textarea-content"
@@ -356,9 +342,9 @@ export default function SendMessagePage() {
                           <Info className="w-3 h-3 shrink-0" />
                           <span>User: <code className="bg-muted px-1 rounded">&lt;@USER_ID&gt;</code></span>
                           <span>·</span>
-                          <span>Rolle: <code className="bg-muted px-1 rounded">&lt;@&ROLLEN_ID&gt;</code></span>
+                          <span>Role: <code className="bg-muted px-1 rounded">&lt;@&ROLE_ID&gt;</code></span>
                           <span>·</span>
-                          <span>Kanal: <code className="bg-muted px-1 rounded">&lt;#KANAL_ID&gt;</code></span>
+                          <span>Channel: <code className="bg-muted px-1 rounded">&lt;#CHANNEL_ID&gt;</code></span>
                         </div>
                         <span className="shrink-0">{field.value?.length || 0} / 2000</span>
                       </div>
@@ -375,7 +361,7 @@ export default function SendMessagePage() {
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                           <FormLabel>Rich Embed</FormLabel>
-                          <FormDescription>Nachricht als Discord-Embed formatieren</FormDescription>
+                          <FormDescription>Format message as a Discord Embed</FormDescription>
                         </div>
                         <FormControl>
                           <Switch
@@ -390,14 +376,14 @@ export default function SendMessagePage() {
 
                   {useEmbed && (
                     <div className="space-y-5 p-4 rounded-lg bg-muted/20 border">
-                      {/* Color */}
-                      <div className="flex items-center gap-4">
+                      {/* Color & Timestamp */}
+                      <div className="flex items-center gap-4 flex-wrap">
                         <FormField
                           control={form.control}
                           name="embedColor"
                           render={({ field }) => (
                             <FormItem className="flex items-center gap-3">
-                              <FormLabel className="shrink-0">Farbe</FormLabel>
+                              <FormLabel className="shrink-0">Color</FormLabel>
                               <FormControl>
                                 <input
                                   type="color"
@@ -421,7 +407,7 @@ export default function SendMessagePage() {
                           name="embedTimestamp"
                           render={({ field }) => (
                             <FormItem className="flex items-center gap-2 ml-auto">
-                              <FormLabel>Zeitstempel</FormLabel>
+                              <FormLabel>Timestamp</FormLabel>
                               <FormControl>
                                 <Switch
                                   checked={field.value}
@@ -438,7 +424,7 @@ export default function SendMessagePage() {
 
                       {/* Author */}
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-muted-foreground">Autor</p>
+                        <p className="text-sm font-medium text-muted-foreground">Author</p>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           <FormField
                             control={form.control}
@@ -447,7 +433,7 @@ export default function SendMessagePage() {
                               <FormItem>
                                 <FormLabel>Name</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="Autorname" {...field} data-testid="input-embed-author-name" />
+                                  <Input placeholder="Author name" {...field} data-testid="input-embed-author-name" />
                                 </FormControl>
                               </FormItem>
                             )}
@@ -469,7 +455,7 @@ export default function SendMessagePage() {
                             name="embedAuthorIconUrl"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Icon-URL</FormLabel>
+                                <FormLabel>Icon URL</FormLabel>
                                 <FormControl>
                                   <Input placeholder="https://..." {...field} data-testid="input-embed-author-icon" />
                                 </FormControl>
@@ -483,15 +469,15 @@ export default function SendMessagePage() {
 
                       {/* Title & Description */}
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-muted-foreground">Inhalt</p>
+                        <p className="text-sm font-medium text-muted-foreground">Content</p>
                         <FormField
                           control={form.control}
                           name="embedTitle"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Titel</FormLabel>
+                              <FormLabel>Title</FormLabel>
                               <FormControl>
-                                <Input placeholder="Embed-Titel" {...field} data-testid="input-embed-title" />
+                                <Input placeholder="Embed title" {...field} data-testid="input-embed-title" />
                               </FormControl>
                             </FormItem>
                           )}
@@ -501,9 +487,9 @@ export default function SendMessagePage() {
                           name="embedDescription"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Beschreibung</FormLabel>
+                              <FormLabel>Description</FormLabel>
                               <FormControl>
-                                <Textarea placeholder="Embed-Beschreibung" rows={3} {...field} data-testid="textarea-embed-description" />
+                                <Textarea placeholder="Embed description" rows={3} {...field} data-testid="textarea-embed-description" />
                               </FormControl>
                             </FormItem>
                           )}
@@ -514,18 +500,18 @@ export default function SendMessagePage() {
 
                       {/* Thumbnail & Image */}
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-muted-foreground">Bilder</p>
+                        <p className="text-sm font-medium text-muted-foreground">Images</p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <FormField
                             control={form.control}
                             name="embedThumbnail"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Thumbnail-URL</FormLabel>
+                                <FormLabel>Thumbnail URL</FormLabel>
                                 <FormControl>
                                   <Input placeholder="https://..." {...field} data-testid="input-embed-thumbnail" />
                                 </FormControl>
-                                <FormDescription>Kleines Bild oben rechts</FormDescription>
+                                <FormDescription>Small image in the top-right corner</FormDescription>
                               </FormItem>
                             )}
                           />
@@ -534,11 +520,11 @@ export default function SendMessagePage() {
                             name="embedImage"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Bild-URL</FormLabel>
+                                <FormLabel>Image URL</FormLabel>
                                 <FormControl>
                                   <Input placeholder="https://..." {...field} data-testid="input-embed-image" />
                                 </FormControl>
-                                <FormDescription>Großes Bild unten im Embed</FormDescription>
+                                <FormDescription>Large image at the bottom of the embed</FormDescription>
                               </FormItem>
                             )}
                           />
@@ -550,7 +536,7 @@ export default function SendMessagePage() {
                       {/* Fields */}
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium text-muted-foreground">Felder</p>
+                          <p className="text-sm font-medium text-muted-foreground">Fields</p>
                           <Button
                             type="button"
                             variant="outline"
@@ -558,11 +544,14 @@ export default function SendMessagePage() {
                             onClick={() => append({ name: "", value: "", inline: false })}
                             data-testid="button-add-field"
                           >
-                            <Plus className="w-4 h-4 mr-1" /> Feld hinzufügen
+                            <Plus className="w-4 h-4 mr-1" /> Add Field
                           </Button>
                         </div>
                         {fields.map((field, index) => (
-                          <div key={field.id} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto] gap-2 items-end p-3 border rounded-md">
+                          <div
+                            key={field.id}
+                            className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto] gap-2 items-end p-3 border rounded-md"
+                          >
                             <FormField
                               control={form.control}
                               name={`embedFields.${index}.name`}
@@ -570,7 +559,7 @@ export default function SendMessagePage() {
                                 <FormItem>
                                   <FormLabel>Name</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="Feldname" {...f} data-testid={`input-field-name-${index}`} />
+                                    <Input placeholder="Field name" {...f} data-testid={`input-field-name-${index}`} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -581,9 +570,9 @@ export default function SendMessagePage() {
                               name={`embedFields.${index}.value`}
                               render={({ field: f }) => (
                                 <FormItem>
-                                  <FormLabel>Wert</FormLabel>
+                                  <FormLabel>Value</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="Feldwert" {...f} data-testid={`input-field-value-${index}`} />
+                                    <Input placeholder="Field value" {...f} data-testid={`input-field-value-${index}`} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -596,7 +585,11 @@ export default function SendMessagePage() {
                                 <FormItem className="flex flex-col items-center">
                                   <FormLabel>Inline</FormLabel>
                                   <FormControl>
-                                    <Switch checked={f.value} onCheckedChange={f.onChange} data-testid={`switch-field-inline-${index}`} />
+                                    <Switch
+                                      checked={f.value}
+                                      onCheckedChange={f.onChange}
+                                      data-testid={`switch-field-inline-${index}`}
+                                    />
                                   </FormControl>
                                 </FormItem>
                               )}
@@ -625,9 +618,9 @@ export default function SendMessagePage() {
                             name="embedFooterText"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Footer-Text</FormLabel>
+                                <FormLabel>Footer Text</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="Footer-Text" {...field} data-testid="input-embed-footer-text" />
+                                  <Input placeholder="Footer text" {...field} data-testid="input-embed-footer-text" />
                                 </FormControl>
                               </FormItem>
                             )}
@@ -637,7 +630,7 @@ export default function SendMessagePage() {
                             name="embedFooterIconUrl"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Footer-Icon-URL</FormLabel>
+                                <FormLabel>Footer Icon URL</FormLabel>
                                 <FormControl>
                                   <Input placeholder="https://..." {...field} data-testid="input-embed-footer-icon" />
                                 </FormControl>
@@ -661,7 +654,7 @@ export default function SendMessagePage() {
                   ) : (
                     <Send className="mr-2 w-4 h-4" />
                   )}
-                  Nachricht senden
+                  Send Message
                 </Button>
               </form>
             </Form>
@@ -671,27 +664,25 @@ export default function SendMessagePage() {
         {/* Delete Message */}
         <Card>
           <CardHeader>
-            <CardTitle>Nachricht löschen</CardTitle>
-            <CardDescription>
-              Channel-ID und Nachrichten-ID separat eingeben
-            </CardDescription>
+            <CardTitle>Delete Message</CardTitle>
+            <CardDescription>Enter the Channel ID and Message ID separately</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Channel-ID</label>
+                  <label className="text-sm font-medium">Channel ID</label>
                   <Input
-                    placeholder="z.B. 1443318323017420891"
+                    placeholder="e.g. 1443318323017420891"
                     value={deleteChannelId}
                     onChange={(e) => setDeleteChannelId(e.target.value)}
                     data-testid="input-delete-channel-id"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Nachrichten-ID</label>
+                  <label className="text-sm font-medium">Message ID</label>
                   <Input
-                    placeholder="z.B. 1471981340231467101"
+                    placeholder="e.g. 1471981340231467101"
                     value={deleteMessageId}
                     onChange={(e) => setDeleteMessageId(e.target.value)}
                     data-testid="input-delete-message-id"
@@ -710,7 +701,7 @@ export default function SendMessagePage() {
                 ) : (
                   <Trash2 className="mr-2 w-4 h-4" />
                 )}
-                Nachricht löschen
+                Delete Message
               </Button>
             </div>
           </CardContent>
