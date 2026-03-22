@@ -12,6 +12,7 @@ import {
   ActionRowBuilder,
   Partials,
   ChannelType,
+  EmbedBuilder,
 } from "discord.js";
 import {
   joinVoiceChannel,
@@ -28,7 +29,6 @@ import fs from "fs";
 import path from "path";
 import { storage } from "./storage";
 
-// Ensure FFmpeg is locatable — it is installed as a Nix system package
 import { execSync } from "child_process";
 
 (function detectFfmpeg() {
@@ -66,8 +66,9 @@ export class DiscordBot {
           GatewayIntentBits.DirectMessages,
           GatewayIntentBits.GuildMessageReactions,
           GatewayIntentBits.GuildVoiceStates,
+          GatewayIntentBits.GuildMembers,
         ],
-        partials: [Partials.Channel, Partials.Message, Partials.Reaction],
+        partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.GuildMember],
       });
 
       this.startTime = Date.now();
@@ -138,6 +139,39 @@ export class DiscordBot {
         await this.registerCommands();
       });
 
+      // --- AUTO WELCOME NEW MEMBERS ---
+      this.client.on("guildMemberAdd", async (member) => {
+        try {
+          const guild = member.guild;
+          // Find a system channel or first available text channel
+          const welcomeChannel =
+            guild.systemChannel ||
+            guild.channels.cache.find(
+              (ch: any) =>
+                ch.type === 0 &&
+                ch
+                  .permissionsFor(guild.members.me!)
+                  ?.has(PermissionFlagsBits.SendMessages),
+            );
+
+          if (welcomeChannel && "send" in welcomeChannel) {
+            const welcomeEmbed = new EmbedBuilder()
+              .setColor(0xd32f2f)
+              .setTitle("Willkommen auf dem Server!")
+              .setDescription(
+                `Herzlich willkommen, ${member}! Wir freuen uns, dich dabei zu haben. Schau dich gerne um und hab Spaß!`,
+              )
+              .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
+              .setFooter({ text: guild.name, iconURL: guild.iconURL() ?? undefined })
+              .setTimestamp();
+
+            await (welcomeChannel as any).send({ embeds: [welcomeEmbed] });
+          }
+        } catch (error) {
+          console.error("❌ Fehler beim Senden der Willkommensnachricht:", error);
+        }
+      });
+
       this.client.on("interactionCreate", async (interaction) => {
         if (interaction.isChatInputCommand()) {
           await this.handleCommand(interaction);
@@ -171,7 +205,6 @@ export class DiscordBot {
         }
 
         // --- AUTOMATISCHE REAKTIONEN FÜR SPEZIFISCHE USER ---
-        // (läuft in ALLEN Channels, unabhängig von Grüßen oder Ausschlüssen)
         const userReactions: Record<string, string[]> = {
           "1242531438524367002": ["1471991880932917379", "1473021572498325772"],
           "1464349872730935537": [
@@ -192,7 +225,6 @@ export class DiscordBot {
         };
 
         if (userReactions[message.author.id]) {
-          // Fetch fresh message state to check existing reactions (prevents toggle by two instances)
           const freshMsg = await message.fetch(true).catch(() => message);
           for (const emojiId of userReactions[message.author.id]) {
             try {
@@ -218,26 +250,26 @@ export class DiscordBot {
 
         const content = message.content.toLowerCase().trim();
         const greetings = [
-          "hi", "hallo", "hello", "hey", "moin", "servus", "bonjour", "guten tag", 
-          "çau", "ciau", "hoi", "你好", "wilkommen", "willkommen", "welcome", 
-          "hiho", "heyho", "namaste", "helo", "hola", "hallo zusammen", "hallo alle", 
-          "labas", "sut", "sveiki", "sveikas", "labas rytas", "labas vakaras", 
+          "hi", "hallo", "hello", "hey", "moin", "servus", "bonjour", "guten tag",
+          "çau", "ciau", "hoi", "你好", "wilkommen", "willkommen", "welcome",
+          "hiho", "heyho", "namaste", "helo", "hola", "hallo zusammen", "hallo alle",
+          "labas", "sut", "sveiki", "sveikas", "labas rytas", "labas vakaras",
           "sveiki atvykę", "sveiki prisijungę", "☆: .｡. o(≧▽≦)o .｡.:☆",
-          "namaste bro, kaseho?", "नमस्ते", "grüezi", "moin moin", "mahlzeit", 
-          "salut", "coucou", "allô", "ciao", "buongiorno", "salve", "¿qué tal?", 
-          "buenas", "buenos días", "olá", "oi", "bom dia", "goedendag", "hej", 
-          "tjena", "hallå", "hei", "terve", "cześć", "dzień dobry", "ahoj", 
-          "dobrý den", "szia", "heló", "buna", "geia", "yassas", "merhaba", 
-          "selam", "zdravstvuyte", "privet", "привет", "konnichiwa", "ohayou", 
-          "moshi moshi", "こんにちは", "annyeong", "annyeonghaseyo", "안녕하세요", 
-          "nǐ hǎo", "nǐ hǎo ma", "néih hóu", "xin chào", "sawatdee", "kumusta", 
-          "apa kabar", "aloha", "salam", "as-salaam-alaikum", "marhaba", 
-          "السلام عليكم", "shalom", "shaloam", "jambo", "habari", "sawubona", 
-          "yo", "sup", "howdy", "wassup", "wazzup", "zup", "greetings", "hiya", 
-          "heyy", "heyyy", "re", "back", "wb", "morning", "night", "evening", 
-          "gn", "gm", "morgen", "nabend", "tach", "yoo", "bruh", "mellon", 
-          "nuqneH", "live long and prosper", "may the force be with you", 
-          "hello there", "01001000 01101001"
+          "namaste bro, kaseho?", "नमस्ते", "grüezi", "moin moin", "mahlzeit",
+          "salut", "coucou", "allô", "ciao", "buongiorno", "salve", "¿qué tal?",
+          "buenas", "buenos días", "olá", "oi", "bom dia", "goedendag", "hej",
+          "tjena", "hallå", "hei", "terve", "cześć", "dzień dobry", "ahoj",
+          "dobrý den", "szia", "heló", "buna", "geia", "yassas", "merhaba",
+          "selam", "zdravstvuyte", "privet", "привет", "konnichiwa", "ohayou",
+          "moshi moshi", "こんにちは", "annyeong", "annyeonghaseyo", "안녕하세요",
+          "nǐ hǎo", "nǐ hǎo ma", "néih hóu", "xin chào", "sawatdee", "kumusta",
+          "apa kabar", "aloha", "salam", "as-salaam-alaikum", "marhaba",
+          "السلام عليكم", "shalom", "shaloam", "jambo", "habari", "sawubona",
+          "yo", "sup", "howdy", "wassup", "wazzup", "zup", "greetings", "hiya",
+          "heyy", "heyyy", "re", "back", "wb", "morning", "night", "evening",
+          "gn", "gm", "morgen", "nabend", "tach", "yoo", "bruh", "mellon",
+          "nuqneH", "live long and prosper", "may the force be with you",
+          "hello there", "01001000 01101001",
         ];
 
         const isGreeting = greetings.some((g) => {
@@ -245,9 +277,11 @@ export class DiscordBot {
             return content.startsWith(g.toLowerCase());
           }
           const flexiblePattern = g
-            .split('')
-            .map(char => /[a-zA-Z]/.test(char) ? `${char.toLowerCase()}+` : `\\${char}`)
-            .join('');
+            .split("")
+            .map((char) =>
+              /[a-zA-Z]/.test(char) ? `${char.toLowerCase()}+` : `\\${char}`,
+            )
+            .join("");
           const regex = new RegExp(`^${flexiblePattern}\\b`, "i");
           return regex.test(content);
         });
@@ -271,6 +305,7 @@ export class DiscordBot {
           }
           return;
         }
+      });
 
       await this.client.login(token);
     } catch (error) {
@@ -508,6 +543,10 @@ export class DiscordBot {
     }
   }
 
+  isReady(): boolean {
+    return this.ready;
+  }
+
   // --- DASHBOARD API FUNCTIONS ---
 
   getUptime(): string {
@@ -550,7 +589,17 @@ export class DiscordBot {
     channelId: string,
     options: {
       content?: string;
-      embed?: { title?: string; description?: string; color?: string };
+      embed?: {
+        title?: string;
+        description?: string;
+        color?: string;
+        footer?: { text?: string; iconUrl?: string };
+        thumbnail?: string;
+        image?: string;
+        author?: { name?: string; url?: string; iconUrl?: string };
+        fields?: { name: string; value: string; inline?: boolean }[];
+        timestamp?: boolean;
+      };
       replyTo?: string;
     },
   ) {
@@ -565,16 +614,36 @@ export class DiscordBot {
         failIfNotExists: false,
       };
     if (options.embed) {
-      sendOptions.embeds = [
-        {
-          title: options.embed.title,
-          description: options.embed.description,
-          color: options.embed.color
-            ? parseInt(options.embed.color.replace("#", ""), 16)
-            : 0xd32f2f,
-          timestamp: new Date().toISOString(),
-        },
-      ];
+      const e = options.embed;
+      const embedData: any = {
+        color: e.color ? parseInt(e.color.replace("#", ""), 16) : 0xd32f2f,
+      };
+      if (e.title) embedData.title = e.title;
+      if (e.description) embedData.description = e.description;
+      if (e.thumbnail) embedData.thumbnail = { url: e.thumbnail };
+      if (e.image) embedData.image = { url: e.image };
+      if (e.author?.name) {
+        embedData.author = {
+          name: e.author.name,
+          url: e.author.url || undefined,
+          icon_url: e.author.iconUrl || undefined,
+        };
+      }
+      if (e.footer?.text) {
+        embedData.footer = {
+          text: e.footer.text,
+          icon_url: e.footer.iconUrl || undefined,
+        };
+      }
+      if (e.fields && e.fields.length > 0) {
+        embedData.fields = e.fields.map((f) => ({
+          name: f.name,
+          value: f.value,
+          inline: f.inline ?? false,
+        }));
+      }
+      if (e.timestamp) embedData.timestamp = new Date().toISOString();
+      sendOptions.embeds = [embedData];
     }
     sendOptions.allowedMentions = { parse: ["roles", "users", "everyone"] };
     await (channel as any).send(sendOptions);
@@ -584,7 +653,17 @@ export class DiscordBot {
     userId: string,
     options: {
       content?: string;
-      embed?: { title?: string; description?: string; color?: string };
+      embed?: {
+        title?: string;
+        description?: string;
+        color?: string;
+        footer?: { text?: string; iconUrl?: string };
+        thumbnail?: string;
+        image?: string;
+        author?: { name?: string; url?: string; iconUrl?: string };
+        fields?: { name: string; value: string; inline?: boolean }[];
+        timestamp?: boolean;
+      };
     },
   ) {
     if (!this.client) throw new Error("Bot is not initialized.");
@@ -592,16 +671,36 @@ export class DiscordBot {
     const sendOptions: any = {};
     if (options.content) sendOptions.content = options.content;
     if (options.embed) {
-      sendOptions.embeds = [
-        {
-          title: options.embed.title,
-          description: options.embed.description,
-          color: options.embed.color
-            ? parseInt(options.embed.color.replace("#", ""), 16)
-            : 0x1976d2,
-          timestamp: new Date().toISOString(),
-        },
-      ];
+      const e = options.embed;
+      const embedData: any = {
+        color: e.color ? parseInt(e.color.replace("#", ""), 16) : 0x1976d2,
+      };
+      if (e.title) embedData.title = e.title;
+      if (e.description) embedData.description = e.description;
+      if (e.thumbnail) embedData.thumbnail = { url: e.thumbnail };
+      if (e.image) embedData.image = { url: e.image };
+      if (e.author?.name) {
+        embedData.author = {
+          name: e.author.name,
+          url: e.author.url || undefined,
+          icon_url: e.author.iconUrl || undefined,
+        };
+      }
+      if (e.footer?.text) {
+        embedData.footer = {
+          text: e.footer.text,
+          icon_url: e.footer.iconUrl || undefined,
+        };
+      }
+      if (e.fields && e.fields.length > 0) {
+        embedData.fields = e.fields.map((f) => ({
+          name: f.name,
+          value: f.value,
+          inline: f.inline ?? false,
+        }));
+      }
+      if (e.timestamp) embedData.timestamp = new Date().toISOString();
+      sendOptions.embeds = [embedData];
     }
     await user.send(sendOptions);
     return { success: true };
@@ -655,180 +754,65 @@ export class DiscordBot {
     const channel = await this.client.channels.fetch(channelId);
     if (!channel || channel.type !== ChannelType.GuildVoice)
       throw new Error("Ungültiger Voice-Channel.");
-    const guildId = (channel as any).guildId as string;
-    const guild =
-      this.client.guilds.cache.get(guildId) ??
-      (await this.client.guilds.fetch(guildId));
-    if (!guild) throw new Error("Server nicht gefunden.");
-    return { channel, guild, guildId };
+    return channel;
   }
 
   async joinVoice(channelId: string) {
-    const { channel, guild } = await this.resolveVoiceChannel(channelId);
+    const channel = await this.resolveVoiceChannel(channelId);
+    const guild = (channel as any).guild;
 
-    // Destroy stale connection for this guild if any
-    const existing = getVoiceConnection(guild.id);
-    if (existing) {
-      existing.destroy();
-      await new Promise((r) => setTimeout(r, 400));
-    }
-
-    if (!this.audioPlayer) this.audioPlayer = createAudioPlayer();
+    const existingConnection = getVoiceConnection(guild.id);
+    if (existingConnection) existingConnection.destroy();
 
     const connection = joinVoiceChannel({
       channelId: channel.id,
       guildId: guild.id,
       adapterCreator: guild.voiceAdapterCreator,
-      selfDeaf: false,
-      selfMute: false,
     });
-    connection.subscribe(this.audioPlayer);
 
     try {
-      await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
-      console.log("✅ Sprachkanal beigetreten:", channelId);
-    } catch {
+      await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
+    } catch (err) {
       connection.destroy();
-      throw new Error(
-        "Sprachkanal-Verbindung fehlgeschlagen. " +
-          "Bitte stelle sicher dass der Bot VERBINDEN- und SPRECHEN-Berechtigungen hat. " +
-          "(Im Entwicklungsmodus ist UDP geblockt — teste auf dem deployed Server.)",
-      );
+      throw new Error("Could not connect to voice channel.");
     }
+
+    this.audioPlayer = createAudioPlayer();
+    connection.subscribe(this.audioPlayer);
+
     return { success: true };
   }
 
-  async playAudio(channelId: string, source: string, isFilePath = false) {
-    const { channel, guild } = await this.resolveVoiceChannel(channelId);
+  async playAudio(channelId: string, source: string, isLocalFile: boolean) {
+    await this.joinVoice(channelId);
 
-    // Fresh audio player every time to avoid stale state
-    if (this.audioPlayer) this.audioPlayer.stop(true);
-    this.audioPlayer = createAudioPlayer();
-    this.audioPlayer.on("error", (err) =>
-      console.error("❌ AudioPlayer error:", err.message),
-    );
-    this.audioPlayer.on(AudioPlayerStatus.Playing, () =>
-      console.log("▶️ AudioPlayer: Playing"),
-    );
-    this.audioPlayer.on(AudioPlayerStatus.Idle, () =>
-      console.log("ℹ️ AudioPlayer: Idle"),
-    );
-
-    // Reuse existing ready connection for same channel, otherwise create new one
-    const existingConn = getVoiceConnection(guild.id);
-    const canReuse =
-      existingConn !== undefined &&
-      existingConn.joinConfig.channelId === channel.id &&
-      existingConn.state.status !== VoiceConnectionStatus.Destroyed &&
-      existingConn.state.status !== VoiceConnectionStatus.Disconnected;
-
-    if (!canReuse && existingConn) {
-      console.log("🔄 Destroying old connection...");
-      existingConn.destroy();
-      await new Promise((r) => setTimeout(r, 400));
-    }
-
-    const connection = canReuse
-      ? existingConn!
-      : joinVoiceChannel({
-          channelId: channel.id,
-          guildId: guild.id,
-          adapterCreator: guild.voiceAdapterCreator,
-          selfDeaf: false,
-          selfMute: false,
-        });
-
-    console.log(canReuse ? "♻️ Reusing connection" : "📡 New connection");
-    connection.subscribe(this.audioPlayer);
-
-    // Wait for Ready (with a helpful error message if UDP is blocked)
-    try {
-      await entersState(connection, VoiceConnectionStatus.Ready, 25_000);
-      console.log("✅ Voice connection Ready");
-    } catch {
-      const s = connection.state.status;
-      if (
-        s === VoiceConnectionStatus.Destroyed ||
-        s === VoiceConnectionStatus.Disconnected
-      ) {
-        throw new Error(
-          `Voice-Verbindung fehlgeschlagen. Berechtigungen prüfen (VERBINDEN + SPRECHEN). ` +
-            `Im Entwicklungsmodus ist UDP geblockt — nur auf dem deployed Server nutzbar.`,
-        );
-      }
-      console.warn(
-        `⚠️ Voice noch nicht Ready (${s}) — versuche trotzdem abzuspielen...`,
-      );
-    }
-
-    // Build audio resource
     let resource;
-    if (isFilePath) {
-      console.log("🎵 File:", source);
+    if (isLocalFile) {
       resource = createAudioResource(fs.createReadStream(source), {
         inputType: StreamType.Arbitrary,
-        inlineVolume: true,
       });
     } else {
-      let urlType: string | false = false;
-      try {
-        urlType = await playdl.validate(source);
-      } catch {}
-      console.log("🔍 URL type:", urlType, "->", source);
-
-      if (urlType && urlType !== "search") {
-        // YouTube / SoundCloud via play-dl
-        try {
-          const stream = await playdl.stream(source);
-          console.log("🎵 play-dl stream type:", stream.type);
-          resource = createAudioResource(stream.stream, {
-            inputType: stream.type as any,
-            inlineVolume: true,
-          });
-        } catch (err: any) {
-          console.error("❌ play-dl failed:", err.message);
-          throw new Error("Stream-Fehler: " + err.message);
-        }
-      } else {
-        // Direct audio URL (mp3, ogg, etc.) — FFmpeg handles HTTP URLs
-        console.log("🎵 Direct URL via FFmpeg:", source);
-        resource = createAudioResource(source, {
-          inputType: StreamType.Arbitrary,
-          inlineVolume: true,
-        });
-      }
+      const stream = await playdl.stream(source);
+      resource = createAudioResource(stream.stream, {
+        inputType: stream.type,
+      });
     }
 
-    if (resource.volume) resource.volume.setVolume(1);
+    if (!this.audioPlayer) throw new Error("Audio player not initialized.");
     this.audioPlayer.play(resource);
 
-    return new Promise<{ success: true }>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        console.warn("⚠️ No Playing event after 15s — resolving");
-        resolve({ success: true });
-      }, 15_000);
-
-      this.audioPlayer!.once(AudioPlayerStatus.Playing, () => {
-        clearTimeout(timeout);
-        console.log("✅ Audio is playing");
-        resolve({ success: true });
-      });
-      this.audioPlayer!.once("error", (err) => {
-        clearTimeout(timeout);
-        reject(new Error("Audio-Fehler: " + err.message));
-      });
+    return new Promise<{ success: boolean }>((resolve, reject) => {
+      this.audioPlayer!.once(AudioPlayerStatus.Idle, () =>
+        resolve({ success: true }),
+      );
+      this.audioPlayer!.once("error", reject);
     });
   }
 
   stopAudio() {
-    if (this.audioPlayer) {
-      this.audioPlayer.stop();
-    }
+    if (!this.audioPlayer) return { success: false, message: "No audio playing." };
+    this.audioPlayer.stop(true);
     return { success: true };
-  }
-
-  isReady(): boolean {
-    return this.ready;
   }
 }
 

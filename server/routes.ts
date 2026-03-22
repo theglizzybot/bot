@@ -66,9 +66,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validated = sendMessageSchema.parse(req.body);
       if (!discordBot.isReady())
         return res.status(503).json({ message: "Bot ist noch nicht bereit" });
+
+      let embedOptions: any = undefined;
+      if (validated.embed) {
+        const e = validated.embed;
+        embedOptions = {
+          title: e.title,
+          description: e.description,
+          color: e.color,
+          thumbnail: e.thumbnail || undefined,
+          image: e.image || undefined,
+          author: e.authorName ? { name: e.authorName, url: e.authorUrl || undefined, iconUrl: e.authorIconUrl || undefined } : undefined,
+          footer: e.footerText ? { text: e.footerText, iconUrl: e.footerIconUrl || undefined } : undefined,
+          timestamp: e.timestamp,
+          fields: e.fields,
+        };
+      }
+
       await discordBot.sendMessage(validated.channelId, {
         content: validated.content,
-        embed: validated.embed,
+        embed: embedOptions,
         replyTo: req.body.replyTo,
       });
       res.json({ success: true });
@@ -123,6 +140,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.body.status,
       );
       res.json(application);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/applications/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteApplication(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Bewerbung nicht gefunden" });
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
