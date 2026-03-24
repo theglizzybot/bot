@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -21,17 +21,103 @@ import {
   Link,
   Upload,
   StopCircle,
+  ImageIcon,
+  Pencil,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { BotStatus } from "@shared/schema";
 
+interface BotInfo {
+  id: string;
+  username: string;
+  discriminator: string;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
+  nicknames: Record<string, string | null>;
+}
+
+interface DiscordServer {
+  id: string;
+  name: string;
+  icon: string | null;
+  channels: { id: string; name: string; type: number }[];
+}
+
+function ServerNicknameRow({
+  server,
+  currentNickname,
+}: {
+  server: DiscordServer;
+  currentNickname: string | null;
+}) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [nickname, setNickname] = useState(currentNickname ?? "");
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/discord/servers/${server.id}/nickname`, {
+        nickname,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Nickname updated", description: `Nickname saved for ${server.name}.` });
+      qc.invalidateQueries({ queryKey: ["/api/discord/bot/info"] });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const iconUrl = server.icon
+    ? `https://cdn.discordapp.com/icons/${server.id}/${server.icon}.png?size=64`
+    : null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Avatar className="w-8 h-8 shrink-0">
+        <AvatarImage src={iconUrl ?? undefined} />
+        <AvatarFallback className="text-xs">{server.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+      </Avatar>
+      <span className="text-sm font-medium w-40 truncate shrink-0" title={server.name}>
+        {server.name}
+      </span>
+      <div className="flex flex-1 gap-2 min-w-0">
+        <Input
+          data-testid={`input-nickname-${server.id}`}
+          placeholder={`Nickname (leave empty to reset)`}
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          className="flex-1 min-w-0"
+        />
+        <Button
+          data-testid={`button-save-nickname-${server.id}`}
+          size="icon"
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending}
+        >
+          {mutation.isPending ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Pencil className="w-4 h-4" />
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { toast } = useToast();
+  const qc = useQueryClient();
 
   const [targetChannelId, setTargetChannelId] = useState("1471577369440686429");
   const [audioChannelId, setAudioChannelId] = useState("1471577369440686429");
@@ -43,8 +129,19 @@ export default function Dashboard() {
   const [reactMessageId, setReactMessageId] = useState("");
   const [reactEmoji, setReactEmoji] = useState("<:music_disc:1471990618828837139>");
 
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [bannerUrl, setBannerUrl] = useState("");
+
   const { data: botStatus, isLoading } = useQuery<BotStatus>({
     queryKey: ["/api/bot/status"],
+  });
+
+  const { data: botInfo } = useQuery<BotInfo>({
+    queryKey: ["/api/discord/bot/info"],
+  });
+
+  const { data: servers } = useQuery<DiscordServer[]>({
+    queryKey: ["/api/discord/servers"],
   });
 
   const joinVoiceMutation = useMutation({
@@ -126,6 +223,36 @@ export default function Dashboard() {
     },
     onSuccess: () => {
       toast({ title: "Reaction sent", description: "Emoji added successfully." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const setAvatarMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/discord/bot/avatar", { imageUrl: avatarUrl });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Avatar updated", description: "The bot's global profile picture has been changed." });
+      setAvatarUrl("");
+      qc.invalidateQueries({ queryKey: ["/api/discord/bot/info"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const setBannerMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/discord/bot/banner", { imageUrl: bannerUrl });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Banner updated", description: "The bot's profile banner has been changed." });
+      setBannerUrl("");
+      qc.invalidateQueries({ queryKey: ["/api/discord/bot/info"] });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -217,6 +344,133 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Bot Appearance */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Bot Appearance
+                </CardTitle>
+                <CardDescription>
+                  Change the bot's global profile picture and banner, and set custom nicknames per server.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Current profile preview */}
+                {botInfo && (
+                  <div className="flex items-center gap-4 p-4 rounded-md bg-muted/40">
+                    <div className="relative">
+                      <Avatar className="w-16 h-16">
+                        <AvatarImage src={botInfo.avatarUrl ?? undefined} />
+                        <AvatarFallback className="text-lg">
+                          {botInfo.username.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-base">{botInfo.username}</p>
+                      <p className="text-xs text-muted-foreground">ID: {botInfo.id}</p>
+                      {botInfo.bannerUrl && (
+                        <img
+                          src={botInfo.bannerUrl}
+                          alt="Bot banner"
+                          className="mt-2 h-12 rounded-md object-cover w-48"
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Avatar */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-sm font-medium">
+                      <ImageIcon className="w-4 h-4" />
+                      Global Profile Picture (Avatar)
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Applies to all servers. Paste a direct image URL (png, jpg, gif).
+                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        data-testid="input-bot-avatar-url"
+                        placeholder="https://example.com/avatar.png"
+                        value={avatarUrl}
+                        onChange={(e) => setAvatarUrl(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        data-testid="button-set-avatar"
+                        onClick={() => setAvatarMutation.mutate()}
+                        disabled={setAvatarMutation.isPending || !avatarUrl}
+                      >
+                        {setAvatarMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          "Set"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Banner */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-sm font-medium">
+                      <ImageIcon className="w-4 h-4" />
+                      Global Profile Banner
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Requires a verified bot account. Paste a direct image URL.
+                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        data-testid="input-bot-banner-url"
+                        placeholder="https://example.com/banner.png"
+                        value={bannerUrl}
+                        onChange={(e) => setBannerUrl(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        data-testid="button-set-banner"
+                        onClick={() => setBannerMutation.mutate()}
+                        disabled={setBannerMutation.isPending || !bannerUrl}
+                      >
+                        {setBannerMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          "Set"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Per-server nicknames */}
+                {servers && servers.length > 0 && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <Pencil className="w-4 h-4" />
+                        Server Nicknames
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Set a custom nickname for the bot in each server. Leave empty to reset to the default name.
+                      </p>
+                    </div>
+                    <div className="space-y-3">
+                      {servers.map((server) => (
+                        <ServerNicknameRow
+                          key={server.id}
+                          server={server}
+                          currentNickname={botInfo?.nicknames?.[server.id] ?? null}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             <div className="grid gap-6 md:grid-cols-2">
               {/* Voice Control */}
@@ -418,7 +672,8 @@ export default function Dashboard() {
                     </div>
                     {audioFile && (
                       <p className="text-xs text-muted-foreground">
-                        Selected: <span className="font-medium text-foreground">{audioFile.name}</span>{" "}
+                        Selected:{" "}
+                        <span className="font-medium text-foreground">{audioFile.name}</span>{" "}
                         ({(audioFile.size / 1024 / 1024).toFixed(2)} MB)
                       </p>
                     )}

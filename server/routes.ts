@@ -32,6 +32,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/discord/bot/info", async (req, res) => {
+    try {
+      if (!discordBot.isReady())
+        return res.status(503).json({ message: "Bot is not ready yet" });
+      const info = discordBot.getBotInfo();
+      const nicknames = discordBot.getServerNicknames();
+      res.json({ ...info, nicknames });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/discord/bot/avatar", async (req, res) => {
+    try {
+      const { imageUrl } = req.body;
+      if (!imageUrl) return res.status(400).json({ message: "imageUrl is required" });
+      if (!discordBot.isReady())
+        return res.status(503).json({ message: "Bot is not ready yet" });
+      const result = await discordBot.setBotAvatar(imageUrl);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/discord/bot/banner", async (req, res) => {
+    try {
+      const { imageUrl } = req.body;
+      if (!imageUrl) return res.status(400).json({ message: "imageUrl is required" });
+      if (!discordBot.isReady())
+        return res.status(503).json({ message: "Bot is not ready yet" });
+      const result = await discordBot.setBotBanner(imageUrl);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/discord/servers/:id/nickname", async (req, res) => {
+    try {
+      const { nickname } = req.body;
+      if (!discordBot.isReady())
+        return res.status(503).json({ message: "Bot is not ready yet" });
+      const result = await discordBot.setServerNickname(req.params.id, nickname ?? "");
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/discord/servers", async (req, res) => {
     try {
       if (!discordBot.isReady())

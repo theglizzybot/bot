@@ -68,7 +68,12 @@ export class DiscordBot {
           GatewayIntentBits.GuildVoiceStates,
           GatewayIntentBits.GuildMembers,
         ],
-        partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.GuildMember],
+        partials: [
+          Partials.Channel,
+          Partials.Message,
+          Partials.Reaction,
+          Partials.GuildMember,
+        ],
       });
 
       this.startTime = Date.now();
@@ -161,10 +166,17 @@ export class DiscordBot {
               .setColor(0xd32f2f)
               .setTitle("Welcome to the server!")
               .setDescription(
-                `Welcome, ${member}! We're glad to have you here. Feel free to look around and have fun!`,
+                `Welcome, ${member}! We're glad to have you here. Feel free to look around and have fun! Don't forget:
+📜 Look at the rules in ⁠<#1469464292049948785> 
+💬 Meet the community in ⁠<#1469462133095006289>
+🎧 Chat with us in calls 
+`,
               )
               .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
-              .setFooter({ text: guild.name, iconURL: guild.iconURL() ?? undefined })
+              .setFooter({
+                text: guild.name,
+                iconURL: guild.iconURL() ?? undefined,
+              })
               .setTimestamp();
 
             await (welcomeChannel as any).send({ embeds: [welcomeEmbed] });
@@ -252,26 +264,129 @@ export class DiscordBot {
 
         const content = message.content.toLowerCase().trim();
         const greetings = [
-          "hi", "hallo", "hello", "hey", "moin", "servus", "bonjour", "guten tag",
-          "çau", "ciau", "hoi", "你好", "wilkommen", "willkommen", "welcome",
-          "hiho", "heyho", "namaste", "helo", "hola", "hallo zusammen", "hallo alle",
-          "labas", "sut", "sveiki", "sveikas", "labas rytas", "labas vakaras",
-          "sveiki atvykę", "sveiki prisijungę", "☆: .｡. o(≧▽≦)o .｡.:☆",
-          "namaste bro, kaseho?", "नमस्ते", "grüezi", "moin moin", "mahlzeit",
-          "salut", "coucou", "allô", "ciao", "buongiorno", "salve", "¿qué tal?",
-          "buenas", "buenos días", "olá", "oi", "bom dia", "goedendag", "hej",
-          "tjena", "hallå", "hei", "terve", "cześć", "dzień dobry", "ahoj",
-          "dobrý den", "szia", "heló", "buna", "geia", "yassas", "merhaba",
-          "selam", "zdravstvuyte", "privet", "привет", "konnichiwa", "ohayou",
-          "moshi moshi", "こんにちは", "annyeong", "annyeonghaseyo", "안녕하세요",
-          "nǐ hǎo", "nǐ hǎo ma", "néih hóu", "xin chào", "sawatdee", "kumusta",
-          "apa kabar", "aloha", "salam", "as-salaam-alaikum", "marhaba",
-          "السلام عليكم", "shalom", "shaloam", "jambo", "habari", "sawubona",
-          "yo", "sup", "howdy", "wassup", "wazzup", "zup", "greetings", "hiya",
-          "heyy", "heyyy", "re", "back", "wb", "morning", "night", "evening",
-          "gn", "gm", "morgen", "nabend", "tach", "yoo", "bruh", "mellon",
-          "nuqneH", "live long and prosper", "may the force be with you",
-          "hello there", "01001000 01101001",
+          "hi",
+          "hallo",
+          "hello",
+          "hey",
+          "moin",
+          "servus",
+          "bonjour",
+          "guten tag",
+          "çau",
+          "ciau",
+          "hoi",
+          "你好",
+          "wilkommen",
+          "willkommen",
+          "welcome",
+          "hiho",
+          "heyho",
+          "namaste",
+          "helo",
+          "hola",
+          "hallo zusammen",
+          "hallo alle",
+          "labas",
+          "sut",
+          "sveiki",
+          "sveikas",
+          "labas rytas",
+          "labas vakaras",
+          "sveiki atvykę",
+          "sveiki prisijungę",
+          "☆: .｡. o(≧▽≦)o .｡.:☆",
+          "namaste bro, kaseho?",
+          "नमस्ते",
+          "grüezi",
+          "moin moin",
+          "mahlzeit",
+          "salut",
+          "coucou",
+          "allô",
+          "ciao",
+          "buongiorno",
+          "salve",
+          "¿qué tal?",
+          "buenas",
+          "buenos días",
+          "olá",
+          "oi",
+          "bom dia",
+          "goedendag",
+          "hej",
+          "tjena",
+          "hallå",
+          "hei",
+          "terve",
+          "cześć",
+          "dzień dobry",
+          "ahoj",
+          "dobrý den",
+          "szia",
+          "heló",
+          "buna",
+          "geia",
+          "yassas",
+          "merhaba",
+          "selam",
+          "zdravstvuyte",
+          "privet",
+          "привет",
+          "konnichiwa",
+          "ohayou",
+          "moshi moshi",
+          "こんにちは",
+          "annyeong",
+          "annyeonghaseyo",
+          "안녕하세요",
+          "nǐ hǎo",
+          "nǐ hǎo ma",
+          "néih hóu",
+          "xin chào",
+          "sawatdee",
+          "kumusta",
+          "apa kabar",
+          "aloha",
+          "salam",
+          "as-salaam-alaikum",
+          "marhaba",
+          "السلام عليكم",
+          "shalom",
+          "shaloam",
+          "jambo",
+          "habari",
+          "sawubona",
+          "yo",
+          "sup",
+          "howdy",
+          "wassup",
+          "wazzup",
+          "zup",
+          "greetings",
+          "hiya",
+          "heyy",
+          "heyyy",
+          "re",
+          "back",
+          "wb",
+          "morning",
+          "night",
+          "evening",
+          "gn",
+          "gm",
+          "morgen",
+          "nabend",
+          "tach",
+          "yoo",
+          "bruh",
+          "mellon",
+          "nuqneH",
+          "live long and prosper",
+          "may the force be with you",
+          "hello there",
+          "01001000 01101001",
+          "ola",
+          "hola",
         ];
 
         const isGreeting = greetings.some((g) => {
@@ -587,6 +702,53 @@ export class DiscordBot {
     }));
   }
 
+  getBotInfo() {
+    if (!this.client?.user) return null;
+    const user = this.client.user;
+    return {
+      id: user.id,
+      username: user.username,
+      discriminator: user.discriminator,
+      avatarUrl: user.displayAvatarURL({ size: 256 }),
+      bannerUrl: user.bannerURL({ size: 1024 }) ?? null,
+    };
+  }
+
+  async setBotAvatar(imageUrl: string) {
+    if (!this.client?.user) throw new Error("Bot is not initialized.");
+    await this.client.user.setAvatar(imageUrl);
+    return {
+      success: true,
+      avatarUrl: this.client.user.displayAvatarURL({ size: 256 }),
+    };
+  }
+
+  async setBotBanner(imageUrl: string) {
+    if (!this.client?.user) throw new Error("Bot is not initialized.");
+    await this.client.user.setBanner(imageUrl);
+    return {
+      success: true,
+      bannerUrl: this.client.user.bannerURL({ size: 1024 }) ?? null,
+    };
+  }
+
+  async setServerNickname(guildId: string, nickname: string) {
+    if (!this.client) throw new Error("Bot is not initialized.");
+    const guild = this.client.guilds.cache.get(guildId);
+    if (!guild) throw new Error("Server not found.");
+    await guild.members.me?.setNickname(nickname || null);
+    return { success: true, nickname: nickname || null };
+  }
+
+  getServerNicknames() {
+    if (!this.client) return {};
+    const nicknames: Record<string, string | null> = {};
+    this.client.guilds.cache.forEach((guild) => {
+      nicknames[guild.id] = guild.members.me?.nickname ?? null;
+    });
+    return nicknames;
+  }
+
   async sendMessage(
     channelId: string,
     options: {
@@ -812,7 +974,8 @@ export class DiscordBot {
   }
 
   stopAudio() {
-    if (!this.audioPlayer) return { success: false, message: "No audio playing." };
+    if (!this.audioPlayer)
+      return { success: false, message: "No audio playing." };
     this.audioPlayer.stop(true);
     return { success: true };
   }
