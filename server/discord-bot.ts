@@ -740,6 +740,33 @@ export class DiscordBot {
     return { success: true, nickname: nickname || null };
   }
 
+  async setServerAvatar(guildId: string, imageUrl: string) {
+    if (!this.client) throw new Error("Bot is not initialized.");
+    const guild = this.client.guilds.cache.get(guildId);
+    if (!guild) throw new Error("Server not found.");
+    const response = await fetch(imageUrl);
+    if (!response.ok) throw new Error("Failed to fetch image from URL.");
+    const buffer = await response.arrayBuffer();
+    const mimeType = response.headers.get("content-type") || "image/png";
+    const base64 = Buffer.from(buffer).toString("base64");
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+    await guild.members.me?.edit({ avatar: dataUrl });
+    return { success: true };
+  }
+
+  getServerAppearance() {
+    if (!this.client) return {};
+    const appearance: Record<string, { nickname: string | null; avatarUrl: string | null }> = {};
+    this.client.guilds.cache.forEach((guild) => {
+      const me = guild.members.me;
+      appearance[guild.id] = {
+        nickname: me?.nickname ?? null,
+        avatarUrl: me?.avatarURL({ size: 128 }) ?? null,
+      };
+    });
+    return appearance;
+  }
+
   getServerNicknames() {
     if (!this.client) return {};
     const nicknames: Record<string, string | null> = {};

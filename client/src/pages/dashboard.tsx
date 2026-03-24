@@ -34,13 +34,18 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { BotStatus } from "@shared/schema";
 
+interface ServerAppearanceEntry {
+  nickname: string | null;
+  avatarUrl: string | null;
+}
+
 interface BotInfo {
   id: string;
   username: string;
   discriminator: string;
   avatarUrl: string | null;
   bannerUrl: string | null;
-  nicknames: Record<string, string | null>;
+  serverAppearance: Record<string, ServerAppearanceEntry>;
 }
 
 interface DiscordServer {
@@ -50,22 +55,27 @@ interface DiscordServer {
   channels: { id: string; name: string; type: number }[];
 }
 
-function ServerNicknameRow({
+function ServerAppearanceCard({
   server,
-  currentNickname,
+  appearance,
 }: {
   server: DiscordServer;
-  currentNickname: string | null;
+  appearance: ServerAppearanceEntry | undefined;
 }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [nickname, setNickname] = useState(currentNickname ?? "");
+  const [nickname, setNickname] = useState(appearance?.nickname ?? "");
+  const [avatarUrl, setAvatarUrl] = useState("");
 
-  const mutation = useMutation({
+  const serverIconUrl = server.icon
+    ? `https://cdn.discordapp.com/icons/${server.id}/${server.icon}.png?size=64`
+    : null;
+
+  const currentBotAvatar = appearance?.avatarUrl ?? null;
+
+  const nicknameMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/discord/servers/${server.id}/nickname`, {
-        nickname,
-      });
+      const res = await apiRequest("POST", `/api/discord/servers/${server.id}/nickname`, { nickname });
       return res.json();
     },
     onSuccess: () => {
@@ -77,41 +87,96 @@ function ServerNicknameRow({
     },
   });
 
-  const iconUrl = server.icon
-    ? `https://cdn.discordapp.com/icons/${server.id}/${server.icon}.png?size=64`
-    : null;
+  const avatarMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/discord/servers/${server.id}/avatar`, { imageUrl: avatarUrl });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Avatar updated", description: `Per-server avatar set for ${server.name}.` });
+      setAvatarUrl("");
+      qc.invalidateQueries({ queryKey: ["/api/discord/bot/info"] });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <Avatar className="w-8 h-8 shrink-0">
-        <AvatarImage src={iconUrl ?? undefined} />
-        <AvatarFallback className="text-xs">{server.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-      </Avatar>
-      <span className="text-sm font-medium w-40 truncate shrink-0" title={server.name}>
-        {server.name}
-      </span>
-      <div className="flex flex-1 gap-2 min-w-0">
-        <Input
-          data-testid={`input-nickname-${server.id}`}
-          placeholder={`Nickname (leave empty to reset)`}
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          className="flex-1 min-w-0"
-        />
-        <Button
-          data-testid={`button-save-nickname-${server.id}`}
-          size="icon"
-          onClick={() => mutation.mutate()}
-          disabled={mutation.isPending}
-        >
-          {mutation.isPending ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Pencil className="w-4 h-4" />
-          )}
-        </Button>
-      </div>
-    </div>
+    <Card>
+      <CardHeader className="flex flex-row items-center gap-3 pb-3">
+        <Avatar className="w-10 h-10 shrink-0">
+          <AvatarImage src={serverIconUrl ?? undefined} />
+          <AvatarFallback className="text-xs">{server.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <CardTitle className="text-sm truncate">{server.name}</CardTitle>
+          <CardDescription className="text-xs">ID: {server.id}</CardDescription>
+        </div>
+        {currentBotAvatar && (
+          <Avatar className="w-8 h-8 shrink-0 ml-auto">
+            <AvatarImage src={currentBotAvatar} />
+            <AvatarFallback className="text-xs">Bot</AvatarFallback>
+          </Avatar>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+            <ImageIcon className="w-3 h-3" />
+            Server Avatar (per-server)
+          </Label>
+          <div className="flex gap-2">
+            <Input
+              data-testid={`input-server-avatar-${server.id}`}
+              placeholder="https://example.com/avatar.png"
+              value={avatarUrl}
+              onChange={(e) => setAvatarUrl(e.target.value)}
+              className="flex-1 text-xs"
+            />
+            <Button
+              data-testid={`button-set-server-avatar-${server.id}`}
+              size="icon"
+              onClick={() => avatarMutation.mutate()}
+              disabled={avatarMutation.isPending || !avatarUrl}
+            >
+              {avatarMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ImageIcon className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+            <Pencil className="w-3 h-3" />
+            Nickname (leave empty to reset)
+          </Label>
+          <div className="flex gap-2">
+            <Input
+              data-testid={`input-nickname-${server.id}`}
+              placeholder="Custom nickname…"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              className="flex-1 text-xs"
+            />
+            <Button
+              data-testid={`button-save-nickname-${server.id}`}
+              size="icon"
+              onClick={() => nicknameMutation.mutate()}
+              disabled={nicknameMutation.isPending}
+            >
+              {nicknameMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Pencil className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -446,24 +511,24 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Per-server nicknames */}
+                {/* Per-server appearance */}
                 {servers && servers.length > 0 && (
                   <div className="space-y-3">
                     <div>
                       <Label className="flex items-center gap-2 text-sm font-medium">
-                        <Pencil className="w-4 h-4" />
-                        Server Nicknames
+                        <Server className="w-4 h-4" />
+                        Per-Server Settings
                       </Label>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Set a custom nickname for the bot in each server. Leave empty to reset to the default name.
+                        Set a custom avatar and nickname for each server individually.
                       </p>
                     </div>
-                    <div className="space-y-3">
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       {servers.map((server) => (
-                        <ServerNicknameRow
+                        <ServerAppearanceCard
                           key={server.id}
                           server={server}
-                          currentNickname={botInfo?.nicknames?.[server.id] ?? null}
+                          appearance={botInfo?.serverAppearance?.[server.id]}
                         />
                       ))}
                     </div>

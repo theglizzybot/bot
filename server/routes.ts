@@ -37,8 +37,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!discordBot.isReady())
         return res.status(503).json({ message: "Bot is not ready yet" });
       const info = discordBot.getBotInfo();
-      const nicknames = discordBot.getServerNicknames();
-      res.json({ ...info, nicknames });
+      const serverAppearance = discordBot.getServerAppearance();
+      res.json({ ...info, serverAppearance });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/discord/servers/:id/avatar", async (req, res) => {
+    try {
+      const { imageUrl } = req.body;
+      if (!imageUrl) return res.status(400).json({ message: "imageUrl is required" });
+      if (!discordBot.isReady())
+        return res.status(503).json({ message: "Bot is not ready yet" });
+      const result = await discordBot.setServerAvatar(req.params.id, imageUrl);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
