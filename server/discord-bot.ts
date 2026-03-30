@@ -46,11 +46,29 @@ import { execSync } from "child_process";
   );
 })();
 
+const DEFAULT_ADMIN_ROLES = [
+  "1469467601792008318",
+  "1471610494421962845",
+  "1471156629604143276",
+  "1471947255161553090",
+  "1468319350707716147",
+];
+
 export class DiscordBot {
   private client: Client | null = null;
   private startTime: number = 0;
   private ready: boolean = false;
   private audioPlayer: ReturnType<typeof createAudioPlayer> | null = null;
+
+  private async checkPermission(interaction: any): Promise<boolean> {
+    const config = await storage.getGuildConfig(interaction.guildId ?? "");
+    const adminRoles = config.adminRoleIds.length > 0 ? config.adminRoleIds : DEFAULT_ADMIN_ROLES;
+    const roles = interaction.member?.roles;
+    if (!roles) return false;
+    if (Array.isArray(roles)) return roles.some((id: string) => adminRoles.includes(id));
+    if (roles.cache) return roles.cache.some((r: any) => adminRoles.includes(r.id));
+    return false;
+  }
 
   async initialize() {
     try {
@@ -150,8 +168,8 @@ export class DiscordBot {
       this.client.on("guildMemberAdd", async (member) => {
         try {
           const guild = member.guild;
-          // Find a system channel or first available text channel
-          const WELCOME_CHANNEL_ID = "1483495498470920406";
+          const guildConfig = await storage.getGuildConfig(guild.id);
+          const WELCOME_CHANNEL_ID = guildConfig.welcomeChannelId ?? "1483495498470920406";
           const welcomeChannel =
             guild.channels.cache.get(WELCOME_CHANNEL_ID) ||
             guild.systemChannel ||
@@ -514,6 +532,43 @@ export class DiscordBot {
           description: "Open the bot customization menu for this server",
           type: 1,
         },
+        {
+          name: "config-admin-role",
+          description: "Add or remove an admin role for this server",
+          type: 1,
+          options: [
+            {
+              name: "action",
+              type: ApplicationCommandOptionType.String,
+              description: "add or remove",
+              required: true,
+              choices: [
+                { name: "Add role", value: "add" },
+                { name: "Remove role", value: "remove" },
+                { name: "List roles", value: "list" },
+              ],
+            },
+            {
+              name: "role",
+              type: ApplicationCommandOptionType.Role,
+              description: "The role to add or remove (not needed for list)",
+              required: false,
+            },
+          ],
+        },
+        {
+          name: "config-welcome-channel",
+          description: "Set the welcome channel for new members in this server",
+          type: 1,
+          options: [
+            {
+              name: "channel",
+              type: ApplicationCommandOptionType.Channel,
+              description: "The channel to send welcome messages in",
+              required: false,
+            },
+          ],
+        },
       ];
 
       const specialCommands = existingCommands.filter((cmd) => cmd.type === 4);
@@ -539,26 +594,6 @@ export class DiscordBot {
 
   private async handleCommand(interaction: any) {
     const { commandName } = interaction;
-    const authorizedRoles = [
-      "1469467601792008318",
-      "1471610494421962845",
-      "1471156629604143276",
-      "1471947255161553090",
-      "1468319350707716147",
-    ];
-
-    const hasPermission = (interaction: any): boolean => {
-      const roles = interaction.member?.roles;
-      if (!roles) return false;
-      // roles can be an array of IDs (APIInteractionGuildMember) or a Collection (GuildMember)
-      if (Array.isArray(roles)) {
-        return roles.some((id: string) => authorizedRoles.includes(id));
-      }
-      if (roles.cache) {
-        return roles.cache.some((r: any) => authorizedRoles.includes(r.id));
-      }
-      return false;
-    };
 
     try {
       switch (commandName) {
@@ -626,7 +661,7 @@ export class DiscordBot {
           await interaction.showModal(modal);
           break;
         case "announcement":
-          if (!hasPermission(interaction)) {
+          if (!(await this.checkPermission(interaction))) {
             return interaction.reply({
               content: "❌ No permission.",
               ephemeral: true,
@@ -646,7 +681,7 @@ export class DiscordBot {
           await interaction.reply({ content: "✅ Sent.", ephemeral: true });
           break;
         case "startup":
-          if (!hasPermission(interaction)) {
+          if (!(await this.checkPermission(interaction))) {
             return interaction.reply({
               content: "❌ No permission.",
               ephemeral: true,
@@ -660,7 +695,7 @@ export class DiscordBot {
           break;
 
         case "bot-nickname":
-          if (!hasPermission(interaction)) {
+          if (!(await this.checkPermission(interaction))) {
             return interaction.reply({ content: "❌ No permission.", ephemeral: true });
           }
           const newNickname = interaction.options.getString("nickname") ?? "";
@@ -673,7 +708,7 @@ export class DiscordBot {
           });
 
         case "bot-avatar":
-          if (!hasPermission(interaction)) {
+          if (!(await this.checkPermission(interaction))) {
             return interaction.reply({ content: "❌ No permission.", ephemeral: true });
           }
           await interaction.deferReply({ ephemeral: true });
@@ -691,7 +726,7 @@ export class DiscordBot {
           }
 
         case "bot-banner":
-          if (!hasPermission(interaction)) {
+          if (!(await this.checkPermission(interaction))) {
             return interaction.reply({ content: "❌ No permission.", ephemeral: true });
           }
           await interaction.deferReply({ ephemeral: true });
@@ -709,7 +744,7 @@ export class DiscordBot {
           }
 
         case "bot-customize":
-          if (!hasPermission(interaction)) {
+          if (!(await this.checkPermission(interaction))) {
             return interaction.reply({ content: "❌ No permission.", ephemeral: true });
           }
           const customizeEmbed = new EmbedBuilder()
@@ -742,6 +777,72 @@ export class DiscordBot {
             components: [customizeRow],
             ephemeral: true,
           });
+
+        case "config-admin-role": {
+          if (!(await this.checkPermission(interaction))) {
+            return interaction.reply({ content: "❌ No permission.", ephemeral: true });
+          }
+          const action = interaction.options.getString("action", true);
+          const role = interaction.options.getRole("role");
+          const guildId = interaction.guildId;
+          const cfg = await storage.getGuildConfig(guildId);
+          const currentRoles = cfg.adminRoleIds.length > 0 ? cfg.adminRoleIds : [...DEFAULT_ADMIN_ROLES];
+
+          if (action === "list") {
+            const list = currentRoles.map((id) => `<@&${id}>`).join("\n") || "None configured (using defaults)";
+            return interaction.reply({
+              embeds: [{
+                color: 0x5865f2,
+                title: "Admin Roles for this Server",
+                description: list,
+                footer: { text: "These roles can use admin commands." },
+              }],
+              ephemeral: true,
+            });
+          }
+
+          if (!role) {
+            return interaction.reply({ content: "❌ Please specify a role.", ephemeral: true });
+          }
+
+          if (action === "add") {
+            if (currentRoles.includes(role.id)) {
+              return interaction.reply({ content: `⚠️ <@&${role.id}> is already an admin role.`, ephemeral: true });
+            }
+            await storage.setGuildConfig(guildId, { adminRoleIds: [...currentRoles, role.id] });
+            return interaction.reply({ content: `✅ <@&${role.id}> added as admin role.`, ephemeral: true });
+          }
+
+          if (action === "remove") {
+            const updated = currentRoles.filter((id) => id !== role.id);
+            await storage.setGuildConfig(guildId, { adminRoleIds: updated });
+            return interaction.reply({ content: `✅ <@&${role.id}> removed from admin roles.`, ephemeral: true });
+          }
+          break;
+        }
+
+        case "config-welcome-channel": {
+          if (!(await this.checkPermission(interaction))) {
+            return interaction.reply({ content: "❌ No permission.", ephemeral: true });
+          }
+          const guildId = interaction.guildId;
+          const channel = interaction.options.getChannel("channel");
+
+          if (!channel) {
+            await storage.setGuildConfig(guildId, { welcomeChannelId: null });
+            return interaction.reply({ content: "✅ Welcome channel reset to default.", ephemeral: true });
+          }
+
+          if (channel.type !== 0) {
+            return interaction.reply({ content: "❌ Please select a text channel.", ephemeral: true });
+          }
+
+          await storage.setGuildConfig(guildId, { welcomeChannelId: channel.id });
+          return interaction.reply({
+            content: `✅ Welcome messages will now be sent to <#${channel.id}>.`,
+            ephemeral: true,
+          });
+        }
       }
     } catch (error) {
       console.error("❌ Command Error:", error);
@@ -752,20 +853,7 @@ export class DiscordBot {
     const { customId } = interaction;
     if (!["customize_nickname", "customize_avatar", "customize_banner"].includes(customId)) return;
 
-    const authorizedRoles = [
-      "1469467601792008318",
-      "1471610494421962845",
-      "1471156629604143276",
-      "1471947255161553090",
-      "1468319350707716147",
-    ];
-    const roles = interaction.member?.roles;
-    const permitted =
-      Array.isArray(roles)
-        ? roles.some((id: string) => authorizedRoles.includes(id))
-        : roles?.cache?.some((r: any) => authorizedRoles.includes(r.id)) ?? false;
-
-    if (!permitted) {
+    if (!(await this.checkPermission(interaction))) {
       return interaction.reply({ content: "❌ No permission.", ephemeral: true });
     }
 
@@ -957,6 +1045,10 @@ export class DiscordBot {
           position: ch.position,
         }))
         .sort((a, b) => a.position - b.position),
+      roles: guild.roles.cache
+        .filter((r: any) => r.id !== guild.id)
+        .map((r: any) => ({ id: r.id, name: r.name, color: r.color }))
+        .sort((a: any, b: any) => b.position - a.position),
     }));
   }
 

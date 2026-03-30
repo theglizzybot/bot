@@ -1,4 +1,4 @@
-import { type Application, type InsertApplication } from "@shared/schema";
+import { type Application, type InsertApplication, type GuildConfig } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -7,13 +7,17 @@ export interface IStorage {
   createApplication(application: InsertApplication): Promise<Application>;
   updateApplicationStatus(id: string, status: string): Promise<Application | undefined>;
   deleteApplication(id: string): Promise<boolean>;
+  getGuildConfig(guildId: string): Promise<GuildConfig>;
+  setGuildConfig(guildId: string, patch: { adminRoleIds?: string[]; welcomeChannelId?: string | null }): Promise<GuildConfig>;
 }
 
 export class MemStorage implements IStorage {
   private applications: Map<string, Application>;
+  private guildConfigs: Map<string, GuildConfig>;
 
   constructor() {
     this.applications = new Map();
+    this.guildConfigs = new Map();
   }
 
   async getApplications(): Promise<Application[]> {
@@ -46,6 +50,20 @@ export class MemStorage implements IStorage {
 
   async deleteApplication(id: string): Promise<boolean> {
     return this.applications.delete(id);
+  }
+
+  async getGuildConfig(guildId: string): Promise<GuildConfig> {
+    return this.guildConfigs.get(guildId) ?? { guildId, adminRoleIds: [], welcomeChannelId: null };
+  }
+
+  async setGuildConfig(
+    guildId: string,
+    patch: { adminRoleIds?: string[]; welcomeChannelId?: string | null },
+  ): Promise<GuildConfig> {
+    const current = await this.getGuildConfig(guildId);
+    const updated: GuildConfig = { ...current, ...patch, guildId };
+    this.guildConfigs.set(guildId, updated);
+    return updated;
   }
 }
 

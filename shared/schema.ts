@@ -22,6 +22,13 @@ export const insertApplicationSchema = createInsertSchema(applications).omit({
 export type InsertApplication = z.infer<typeof insertApplicationSchema>;
 export type Application = typeof applications.$inferSelect;
 
+// Guild Config
+export const guildConfigSchema = z.object({
+  adminRoleIds: z.array(z.string()).default([]),
+  welcomeChannelId: z.string().nullable().default(null),
+});
+export type GuildConfig = z.infer<typeof guildConfigSchema> & { guildId: string };
+
 // Discord Server Info
 export const discordServerSchema = z.object({
   id: z.string(),

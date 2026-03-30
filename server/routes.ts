@@ -83,6 +83,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/discord/servers/:id/config", async (req, res) => {
+    try {
+      const config = await storage.getGuildConfig(req.params.id);
+      res.json(config);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/discord/servers/:id/config", async (req, res) => {
+    try {
+      const { adminRoleIds, welcomeChannelId } = req.body;
+      const config = await storage.setGuildConfig(req.params.id, {
+        ...(adminRoleIds !== undefined && { adminRoleIds }),
+        ...(welcomeChannelId !== undefined && { welcomeChannelId }),
+      });
+      res.json(config);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.post("/api/discord/servers/:id/nickname", async (req, res) => {
     try {
       const { nickname } = req.body;
