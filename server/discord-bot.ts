@@ -499,6 +499,19 @@ export class DiscordBot {
       "1468319350707716147",
     ];
 
+    const hasPermission = (interaction: any): boolean => {
+      const roles = interaction.member?.roles;
+      if (!roles) return false;
+      // roles can be an array of IDs (APIInteractionGuildMember) or a Collection (GuildMember)
+      if (Array.isArray(roles)) {
+        return roles.some((id: string) => authorizedRoles.includes(id));
+      }
+      if (roles.cache) {
+        return roles.cache.some((r: any) => authorizedRoles.includes(r.id));
+      }
+      return false;
+    };
+
     try {
       switch (commandName) {
         case "ping":
@@ -565,11 +578,7 @@ export class DiscordBot {
           await interaction.showModal(modal);
           break;
         case "announcement":
-          if (
-            !interaction.member.roles.cache.some((r: any) =>
-              authorizedRoles.includes(r.id),
-            )
-          ) {
+          if (!hasPermission(interaction)) {
             return interaction.reply({
               content: "❌ No permission.",
               ephemeral: true,
@@ -589,11 +598,7 @@ export class DiscordBot {
           await interaction.reply({ content: "✅ Sent.", ephemeral: true });
           break;
         case "startup":
-          if (
-            !interaction.member.roles.cache.some((r: any) =>
-              authorizedRoles.includes(r.id),
-            )
-          ) {
+          if (!hasPermission(interaction)) {
             return interaction.reply({
               content: "❌ No permission.",
               ephemeral: true,
