@@ -10,6 +10,8 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   Partials,
   ChannelType,
   EmbedBuilder,
@@ -189,6 +191,8 @@ export class DiscordBot {
       this.client.on("interactionCreate", async (interaction) => {
         if (interaction.isChatInputCommand()) {
           await this.handleCommand(interaction);
+        } else if (interaction.isButton()) {
+          await this.handleButton(interaction);
         } else if (interaction.isModalSubmit()) {
           await this.handleModalSubmit(interaction);
         }
@@ -466,6 +470,50 @@ export class DiscordBot {
           ],
         },
         { name: "startup", description: "Manual start message", type: 1 },
+        {
+          name: "bot-nickname",
+          description: "Set the bot's nickname in this server",
+          type: 1,
+          options: [
+            {
+              name: "nickname",
+              type: ApplicationCommandOptionType.String,
+              description: "New nickname (leave empty to reset)",
+              required: false,
+            },
+          ],
+        },
+        {
+          name: "bot-avatar",
+          description: "Set the bot's per-server profile picture",
+          type: 1,
+          options: [
+            {
+              name: "url",
+              type: ApplicationCommandOptionType.String,
+              description: "Direct image URL (png, jpg, gif)",
+              required: true,
+            },
+          ],
+        },
+        {
+          name: "bot-banner",
+          description: "Set the bot's global profile banner",
+          type: 1,
+          options: [
+            {
+              name: "url",
+              type: ApplicationCommandOptionType.String,
+              description: "Direct image URL (png, jpg, gif)",
+              required: true,
+            },
+          ],
+        },
+        {
+          name: "bot-customize",
+          description: "Open the bot customization menu for this server",
+          type: 1,
+        },
       ];
 
       const specialCommands = existingCommands.filter((cmd) => cmd.type === 4);
@@ -610,9 +658,166 @@ export class DiscordBot {
             ephemeral: true,
           });
           break;
+
+        case "bot-nickname":
+          if (!hasPermission(interaction)) {
+            return interaction.reply({ content: "❌ No permission.", ephemeral: true });
+          }
+          const newNickname = interaction.options.getString("nickname") ?? "";
+          await interaction.guild?.members.me?.setNickname(newNickname || null);
+          return interaction.reply({
+            content: newNickname
+              ? `✅ Nickname set to **${newNickname}** in this server.`
+              : "✅ Nickname reset to default.",
+            ephemeral: true,
+          });
+
+        case "bot-avatar":
+          if (!hasPermission(interaction)) {
+            return interaction.reply({ content: "❌ No permission.", ephemeral: true });
+          }
+          await interaction.deferReply({ ephemeral: true });
+          try {
+            const avatarUrl = interaction.options.getString("url", true);
+            const avatarRes = await fetch(avatarUrl);
+            if (!avatarRes.ok) throw new Error("Could not fetch the image URL.");
+            const avatarBuf = await avatarRes.arrayBuffer();
+            const avatarMime = avatarRes.headers.get("content-type") || "image/png";
+            const avatarB64 = `data:${avatarMime};base64,${Buffer.from(avatarBuf).toString("base64")}`;
+            await interaction.guild?.members.me?.edit({ avatar: avatarB64 });
+            return interaction.editReply("✅ Per-server avatar updated!");
+          } catch (e: any) {
+            return interaction.editReply(`❌ Failed: ${e.message}`);
+          }
+
+        case "bot-banner":
+          if (!hasPermission(interaction)) {
+            return interaction.reply({ content: "❌ No permission.", ephemeral: true });
+          }
+          await interaction.deferReply({ ephemeral: true });
+          try {
+            const bannerUrl = interaction.options.getString("url", true);
+            const bannerRes = await fetch(bannerUrl);
+            if (!bannerRes.ok) throw new Error("Could not fetch the image URL.");
+            const bannerBuf = await bannerRes.arrayBuffer();
+            const bannerMime = bannerRes.headers.get("content-type") || "image/png";
+            const bannerB64 = `data:${bannerMime};base64,${Buffer.from(bannerBuf).toString("base64")}`;
+            await this.client?.user?.setBanner(bannerB64);
+            return interaction.editReply("✅ Global banner updated!");
+          } catch (e: any) {
+            return interaction.editReply(`❌ Failed: ${e.message}`);
+          }
+
+        case "bot-customize":
+          if (!hasPermission(interaction)) {
+            return interaction.reply({ content: "❌ No permission.", ephemeral: true });
+          }
+          const customizeEmbed = new EmbedBuilder()
+            .setTitle("Bot Customization")
+            .setDescription(
+              "Use the buttons below to customize the bot for **this server**.\n\n" +
+              "**Set Nickname** — Change the bot's display name here\n" +
+              "**Set Avatar** — Change the bot's profile picture here\n" +
+              "**Set Banner** — Change the bot's global profile banner",
+            )
+            .setColor(0x5865f2)
+            .setFooter({ text: "Changes take effect immediately." })
+            .setTimestamp();
+          const customizeRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId("customize_nickname")
+              .setLabel("Set Nickname")
+              .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+              .setCustomId("customize_avatar")
+              .setLabel("Set Avatar")
+              .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+              .setCustomId("customize_banner")
+              .setLabel("Set Banner")
+              .setStyle(ButtonStyle.Secondary),
+          );
+          return interaction.reply({
+            embeds: [customizeEmbed],
+            components: [customizeRow],
+            ephemeral: true,
+          });
       }
     } catch (error) {
       console.error("❌ Command Error:", error);
+    }
+  }
+
+  private async handleButton(interaction: any) {
+    const { customId } = interaction;
+    if (!["customize_nickname", "customize_avatar", "customize_banner"].includes(customId)) return;
+
+    const authorizedRoles = [
+      "1469467601792008318",
+      "1471610494421962845",
+      "1471156629604143276",
+      "1471947255161553090",
+      "1468319350707716147",
+    ];
+    const roles = interaction.member?.roles;
+    const permitted =
+      Array.isArray(roles)
+        ? roles.some((id: string) => authorizedRoles.includes(id))
+        : roles?.cache?.some((r: any) => authorizedRoles.includes(r.id)) ?? false;
+
+    if (!permitted) {
+      return interaction.reply({ content: "❌ No permission.", ephemeral: true });
+    }
+
+    if (customId === "customize_nickname") {
+      const modal = new ModalBuilder()
+        .setCustomId("modal_bot_nickname")
+        .setTitle("Set Bot Nickname");
+      modal.addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId("nickname_value")
+            .setLabel("Nickname (leave empty to reset)")
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false)
+            .setMaxLength(32),
+        ),
+      );
+      return interaction.showModal(modal);
+    }
+
+    if (customId === "customize_avatar") {
+      const modal = new ModalBuilder()
+        .setCustomId("modal_bot_avatar")
+        .setTitle("Set Per-Server Avatar");
+      modal.addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId("avatar_url")
+            .setLabel("Image URL (png, jpg, gif)")
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setPlaceholder("https://example.com/avatar.png"),
+        ),
+      );
+      return interaction.showModal(modal);
+    }
+
+    if (customId === "customize_banner") {
+      const modal = new ModalBuilder()
+        .setCustomId("modal_bot_banner")
+        .setTitle("Set Global Banner");
+      modal.addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId("banner_url")
+            .setLabel("Image URL (png, jpg, gif)")
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setPlaceholder("https://example.com/banner.png"),
+        ),
+      );
+      return interaction.showModal(modal);
     }
   }
 
@@ -634,6 +839,53 @@ export class DiscordBot {
         });
       } catch (error) {
         console.error("❌ Application Error:", error);
+      }
+    }
+
+    if (interaction.customId === "modal_bot_nickname") {
+      try {
+        const value = interaction.fields.getTextInputValue("nickname_value") ?? "";
+        await interaction.guild?.members.me?.setNickname(value || null);
+        await interaction.reply({
+          content: value
+            ? `✅ Nickname set to **${value}** in this server.`
+            : "✅ Nickname reset to default.",
+          ephemeral: true,
+        });
+      } catch (e: any) {
+        await interaction.reply({ content: `❌ Failed: ${e.message}`, ephemeral: true });
+      }
+    }
+
+    if (interaction.customId === "modal_bot_avatar") {
+      await interaction.deferReply({ ephemeral: true });
+      try {
+        const url = interaction.fields.getTextInputValue("avatar_url");
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Could not fetch the image URL.");
+        const buf = await res.arrayBuffer();
+        const mime = res.headers.get("content-type") || "image/png";
+        const b64 = `data:${mime};base64,${Buffer.from(buf).toString("base64")}`;
+        await interaction.guild?.members.me?.edit({ avatar: b64 });
+        await interaction.editReply("✅ Per-server avatar updated!");
+      } catch (e: any) {
+        await interaction.editReply(`❌ Failed: ${e.message}`);
+      }
+    }
+
+    if (interaction.customId === "modal_bot_banner") {
+      await interaction.deferReply({ ephemeral: true });
+      try {
+        const url = interaction.fields.getTextInputValue("banner_url");
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Could not fetch the image URL.");
+        const buf = await res.arrayBuffer();
+        const mime = res.headers.get("content-type") || "image/png";
+        const b64 = `data:${mime};base64,${Buffer.from(buf).toString("base64")}`;
+        await this.client?.user?.setBanner(b64);
+        await interaction.editReply("✅ Global banner updated!");
+      } catch (e: any) {
+        await interaction.editReply(`❌ Failed: ${e.message}`);
       }
     }
   }
