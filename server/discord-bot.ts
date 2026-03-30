@@ -496,6 +496,7 @@ export class DiscordBot {
       "1471610494421962845",
       "1471156629604143276",
       "1471947255161553090",
+      "1468319350707716147",
     ];
 
     try {
@@ -756,7 +757,10 @@ export class DiscordBot {
 
   getServerAppearance() {
     if (!this.client) return {};
-    const appearance: Record<string, { nickname: string | null; avatarUrl: string | null }> = {};
+    const appearance: Record<
+      string,
+      { nickname: string | null; avatarUrl: string | null }
+    > = {};
     this.client.guilds.cache.forEach((guild) => {
       const me = guild.members.me;
       appearance[guild.id] = {
