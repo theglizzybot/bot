@@ -29,3 +29,7 @@
 </body>
 </html>
 ```
+```api-request
+GET https://gurkistanwiki.gurken.site/api/api.php?c=pages&id=gurkistan
+```
+
