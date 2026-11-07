@@ -1,4 +1,5 @@
-```html-live
+```html
+<!-- github-live-preview -->
 <!DOCTYPE html>
 <html>
 <head>
